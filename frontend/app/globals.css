@@ -1,0 +1,257 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - Professional Data System */
+    --background: 210 20% 98%;         /* #F9FAFB - Gray 50 */
+    --foreground: 221 39% 11%;         /* #111827 - Gray 900 */
+    --card: 0 0% 100%;                 /* #FFFFFF - White */
+    --card-foreground: 221 39% 11%;    /* #111827 - Gray 900 */
+    --popover: 0 0% 100%;              /* #FFFFFF */
+    --popover-foreground: 221 39% 11%; /* #111827 */
+    
+    /* Primary - Data & Actions */
+    --primary: 217 91% 60%;            /* #3B82F6 - Primary 500 */
+    --primary-foreground: 0 0% 100%;   /* White */
+    
+    /* Secondary */
+    --secondary: 220 14% 96%;          /* #F3F4F6 - Gray 100 */
+    --secondary-foreground: 220 9% 46%; /* #6B7280 - Gray 500 */
+    
+    /* Muted */
+    --muted: 210 20% 98%;              /* #F9FAFB - Gray 50 */
+    --muted-foreground: 220 9% 46%;    /* #6B7280 - Gray 500 */
+    
+    /* Accent */
+    --accent: 217 91% 97%;             /* #EFF6FF - Primary 50 */
+    --accent-foreground: 221 83% 53%;  /* #1D4ED8 - Primary 700 */
+    
+    /* Semantic Colors */
+    --success: 160 84% 39%;            /* #059669 - Success 600 */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;             /* #D97706 - Warning 600 */
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;          /* #DC2626 - Danger 600 */
+    --destructive-foreground: 0 0% 100%;
+    --info: 189 94% 43%;               /* #0891B2 - Info 600 */
+    --info-foreground: 0 0% 100%;
+    
+    /* Borders */
+    --border: 220 13% 87%;             /* #D1D5DB - Gray 300 */
+    --input: 220 13% 87%;              /* #D1D5DB */
+    --ring: 217 91% 60%;               /* #3B82F6 */
+    
+    /* Radius - Professional (smaller) */
+    --radius: 6px;
+    
+    /* Card border */
+    --card-border: 220 13% 91%;        /* #E5E7EB - Gray 200 */
+  }
+
+  .dark {
+    /* Dark Mode - Professional Data System */
+    --background: 224 71% 4%;          /* #030712 - Gray 950 */
+    --foreground: 210 20% 98%;         /* #F9FAFB - Gray 50 */
+    --card: 221 39% 11%;               /* #111827 - Gray 900 */
+    --card-foreground: 210 20% 98%;    /* #F9FAFB */
+    --popover: 221 39% 11%;            /* #111827 */
+    --popover-foreground: 210 20% 98%; /* #F9FAFB */
+    
+    /* Primary */
+    --primary: 217 91% 60%;            /* #3B82F6 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary */
+    --secondary: 215 28% 17%;          /* #1E293B - Slate 800 */
+    --secondary-foreground: 210 20% 98%;
+    
+    /* Muted */
+    --muted: 215 28% 17%;              /* #1E293B */
+    --muted-foreground: 215 20% 65%;   /* #94A3B8 - Slate 400 */
+    
+    /* Accent */
+    --accent: 222 47% 11%;             /* #0F172A - Slate 900 */
+    --accent-foreground: 217 91% 60%;  /* #3B82F6 */
+    
+    /* Semantic Colors */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --info: 189 94% 43%;
+    --info-foreground: 0 0% 100%;
+    
+    /* Borders */
+    --border: 215 28% 17%;             /* #1E293B */
+    --input: 215 28% 17%;
+    --ring: 217 91% 60%;
+    
+    /* Card border */
+    --card-border: 217 33% 25%;
+  }
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  :root {
+    color-scheme: light;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
+      'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  /* Monospace for scores and numbers */
+  .font-mono {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+  
+  /* Smooth transition for theme switching */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(5px);
+    }
+  }
+
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  .animation-delay-6000 {
+    animation-delay: 6s;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.8s ease-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.8s ease-out;
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100vh) translateX(20px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes gradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes grid-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-float {
+    animation: float linear infinite;
+  }
+
+  .animate-gradient {
+    animation: gradient 3s ease infinite;
+  }
+
+  .animate-grid-pulse {
+    animation: grid-pulse 4s ease-in-out infinite;
+  }
+}

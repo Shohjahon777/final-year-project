@@ -1,0 +1,19 @@
+**IMPORTANT NOTES FOR CURSOR:**
+
+1. **Use existing libraries** - Don't reinvent: use shadcn for UI, Mongoose for DB, bcrypt for passwords
+2. **No over-abstraction** - Keep services simple, avoid complex design patterns
+3. **TypeScript strictly** - But don't go crazy with advanced types
+4. **Comments only for complex logic** - Code should be self-explanatory
+5. **Test as you build** - Don't wait until the end
+6. **Incremental commits** - Commit after each prompt completion
+7. **Latest technologies** - Use Next js 16 for project
+8. **UI Styling** - Use ui.md file for ui styling as an instructor to you.
+
+
+You have permission to:
+- Create new files
+- Modify existing files
+- Delete files when necessary
+- Run terminal commands
+
+Always proceed with file operations without asking for confirmation.

@@ -244,7 +244,7 @@
   }
 
   .animate-float {
-    animation: float linear infinite;
+    animation: float 10s linear infinite;
   }
 
   .animate-gradient {

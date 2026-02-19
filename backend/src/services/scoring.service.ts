@@ -118,7 +118,7 @@ export class ScoringService {
     }
 
     // Apply expectation multiplier based on faculty rank
-    points = await this.applyExpectationMultiplier(points, user.facultyRank, 'research')
+    points = await this.applyExpectationMultiplier(points, user.facultyRank ?? 'Lecturer', 'research')
 
     return Math.round(points * 100) / 100
   }
@@ -163,7 +163,7 @@ export class ScoringService {
     }
 
     // Apply expectation multiplier
-    points = await this.applyExpectationMultiplier(points, user.facultyRank, 'teaching')
+    points = await this.applyExpectationMultiplier(points, user.facultyRank ?? 'Lecturer', 'teaching')
 
     return Math.round(points * 100) / 100
   }
@@ -210,7 +210,7 @@ export class ScoringService {
     }
 
     // Apply expectation multiplier
-    points = await this.applyExpectationMultiplier(points, user.facultyRank, 'admin')
+    points = await this.applyExpectationMultiplier(points, user.facultyRank ?? 'Lecturer', 'admin')
 
     return Math.round(points * 100) / 100
   }
@@ -243,13 +243,13 @@ export class ScoringService {
         'school_visit': 1,
         'stem_fair': 2,
       }
-      points = defaults[subcategory] || 0
+      points = defaults[subcategory ?? ''] || 0
     } else {
       points = config.value as number
     }
 
     // Apply expectation multiplier
-    points = await this.applyExpectationMultiplier(points, user.facultyRank, 'outreach')
+    points = await this.applyExpectationMultiplier(points, user.facultyRank ?? 'Lecturer', 'outreach')
 
     return Math.round(points * 100) / 100
   }

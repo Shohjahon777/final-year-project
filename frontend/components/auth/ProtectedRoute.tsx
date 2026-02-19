@@ -17,6 +17,8 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
     if (!loading) {
       if (!isAuthenticated) {
         router.push('/login')
+      } else if (user?.mustChangePassword === true) {
+        router.replace('/change-password')
       } else if (requireAdmin && user?.role !== 'admin') {
         router.push('/dashboard')
       }
@@ -35,6 +37,10 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
   }
 
   if (!isAuthenticated) {
+    return null
+  }
+
+  if (user?.mustChangePassword === true) {
     return null
   }
 

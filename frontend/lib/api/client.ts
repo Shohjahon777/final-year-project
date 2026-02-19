@@ -1,6 +1,15 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+function getApiUrl(): string {
+  const url = process.env.NEXT_PUBLIC_API_URL
+  if (url) return url
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+    console.warn('NEXT_PUBLIC_API_URL is not set. API requests may fail. Set it at build time.')
+  }
+  return 'http://localhost:5000/api'
+}
+
+const API_URL = getApiUrl()
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -10,12 +19,15 @@ export const apiClient = axios.create({
   withCredentials: true,
 })
 
-// Request interceptor to add auth token
+// Request interceptor: add auth token; for FormData, omit Content-Type so browser sets multipart boundary
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete config.headers['Content-Type']
     }
     return config
   },
@@ -39,5 +51,16 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// Auth: forgot / reset password (public)
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/forgot-password', { email })
+  return data
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/reset-password', { token, newPassword })
+  return data
+}
 
 export default apiClient

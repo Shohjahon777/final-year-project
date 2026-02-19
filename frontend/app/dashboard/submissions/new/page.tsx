@@ -7,21 +7,23 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { FileImageUpload } from '@/components/ui/file-image-upload'
 import { cn } from '@/lib/utils'
+import apiClient from '@/lib/api/client'
+import { facultyApi } from '@/lib/api/faculty'
 import { 
   ArrowLeft, 
   BookOpen, 
-  Briefcase, 
   Calculator,
   FileText, 
-  GraduationCap, 
   Info,
   Link as LinkIcon,
   Megaphone,
-  Upload
+  Upload,
 } from 'lucide-react'
 
-type Category = 'research' | 'teaching' | 'admin' | 'outreach'
+// Professors self-submit only Research and Outreach; Teaching and Administrative are evaluated by the department.
+type Category = 'research' | 'outreach'
 type EvidenceType = 'link' | 'file' | 'text'
 
 // Point calculation rules (simplified for demo)
@@ -50,19 +52,20 @@ const pointRules = {
   }
 }
 
-const categoryConfig = {
+const categoryConfig: Record<Category, { icon: typeof BookOpen; label: string; maxPoints: number }> = {
   research: { icon: BookOpen, label: 'Research', maxPoints: 40 },
-  teaching: { icon: GraduationCap, label: 'Teaching', maxPoints: 30 },
-  admin: { icon: Briefcase, label: 'Administrative', maxPoints: 20 },
   outreach: { icon: Megaphone, label: 'Outreach', maxPoints: 10 },
 }
+
+const ALLOWED_CATEGORIES: Category[] = ['research', 'outreach']
 
 function NewSubmissionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const initialCategory = searchParams.get('category') as Category | null
   const [category, setCategory] = useState<Category>(
-    (searchParams.get('category') as Category) || 'research'
+    initialCategory && ALLOWED_CATEGORIES.includes(initialCategory) ? initialCategory : 'research'
   )
   const [formData, setFormData] = useState({
     title: '',
@@ -72,6 +75,15 @@ function NewSubmissionContent() {
     evidenceValue: '',
     metadata: {} as Record<string, any>,
   })
+  const [uploadError, setUploadError] = useState('')
+
+  // Redirect invalid category (teaching/admin) to research
+  useEffect(() => {
+    const q = searchParams.get('category') as Category | null
+    if (q && !ALLOWED_CATEGORIES.includes(q)) {
+      router.replace('/dashboard/submissions/new?category=research')
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     setFormData({
@@ -112,18 +124,6 @@ function NewSubmissionContent() {
         multiplier *= pointRules.research.multipliers.studentCoAuthor
         breakdown.push({ label: 'Student Co-author', value: pointRules.research.multipliers.studentCoAuthor })
       }
-    } else if (category === 'teaching') {
-      const rating = formData.metadata.averageRating || 0
-      if (rating > 3) {
-        base = pointRules.teaching.feedback.base + (rating - 3) * pointRules.teaching.feedback.perPoint
-        breakdown.push({ label: `Rating ${rating}/5.0`, value: base })
-      }
-    } else if (category === 'admin') {
-      const taskType = formData.metadata.taskType as keyof typeof pointRules.admin
-      if (taskType && pointRules.admin[taskType]) {
-        base = pointRules.admin[taskType]
-        breakdown.push({ label: `${taskType} Task`, value: base })
-      }
     } else if (category === 'outreach') {
       base = 3 // Default outreach points
       breakdown.push({ label: 'Outreach Activity', value: base })
@@ -139,12 +139,30 @@ function NewSubmissionContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.evidenceType === 'file' && !formData.evidenceValue) {
+      setUploadError('Please upload a file first.')
+      return
+    }
     setLoading(true)
-    setTimeout(() => {
-      console.log('Submission data:', { category, ...formData, calculatedPoints: calculatedPoints.total })
-      setLoading(false)
+    setUploadError('')
+    try {
+      const subcategory =
+        formData.subcategory ||
+        (category === 'research' ? (formData.metadata.journalTier as string) || 'journal' : 'outreach')
+      await facultyApi.createSubmission({
+        category,
+        subcategory,
+        title: formData.title,
+        description: formData.description || undefined,
+        evidence: { type: formData.evidenceType, value: formData.evidenceValue },
+        metadata: Object.keys(formData.metadata).length ? formData.metadata : undefined,
+      })
       router.push('/dashboard/submissions')
-    }, 1000)
+    } catch (err: any) {
+      setUploadError(err.response?.data?.message ?? 'Failed to create submission')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const updateMetadata = (key: string, value: any) => {
@@ -152,6 +170,21 @@ function NewSubmissionContent() {
       ...prev,
       metadata: { ...prev.metadata, [key]: value },
     }))
+  }
+
+  const handleUpload = async (file: File): Promise<string> => {
+    setUploadError('')
+    const formDataUpload = new FormData()
+    formDataUpload.append('file', file)
+    const res = await apiClient.post<{ url: string }>('/upload', formDataUpload)
+    const url = res.data.url
+    setFormData((prev) => ({ ...prev, evidenceValue: url }))
+    return url
+  }
+
+  const clearFile = () => {
+    setFormData((prev) => ({ ...prev, evidenceValue: '' }))
+    setUploadError('')
   }
 
   const renderCategoryFields = () => {
@@ -212,7 +245,7 @@ function NewSubmissionContent() {
                   type="checkbox"
                   checked={formData.metadata.isCorresponding || false}
                   onChange={(e) => updateMetadata('isCorresponding', e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 dark:text-primary-400 focus:ring-primary-500 dark:focus:ring-primary-400"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Corresponding Author</span>
               </label>
@@ -221,97 +254,10 @@ function NewSubmissionContent() {
                   type="checkbox"
                   checked={formData.metadata.hasStudentCoAuthor || false}
                   onChange={(e) => updateMetadata('hasStudentCoAuthor', e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 dark:text-primary-400 focus:ring-primary-500 dark:focus:ring-primary-400"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Student Co-Author</span>
               </label>
-            </div>
-          </div>
-        )
-
-      case 'teaching':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Average Rating <span className="text-danger-500">*</span>
-                </label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="5"
-                value={formData.metadata.averageRating || ''}
-                onChange={(e) => updateMetadata('averageRating', parseFloat(e.target.value))}
-                placeholder="e.g., 4.5"
-              />
-            </div>
-            <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Total Responses
-                </label>
-              <Input
-                type="number"
-                value={formData.metadata.totalResponses || ''}
-                onChange={(e) => updateMetadata('totalResponses', parseInt(e.target.value))}
-                placeholder="e.g., 45"
-              />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                Semester/Term
-              </label>
-              <Input
-                value={formData.metadata.semester || ''}
-                onChange={(e) => updateMetadata('semester', e.target.value)}
-                placeholder="e.g., Fall 2024"
-              />
-            </div>
-          </div>
-        )
-
-      case 'admin':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                Task Complexity <span className="text-danger-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: 'major', label: 'Major', desc: '8 points', example: 'e.g., Accreditation' },
-                  { value: 'medium', label: 'Medium', desc: '4 points', example: 'e.g., Committee Chair' },
-                  { value: 'minor', label: 'Minor', desc: '2 points', example: 'e.g., Event Support' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => updateMetadata('taskType', opt.value)}
-                className={cn(
-                      "p-3 text-left rounded-md border transition-colors",
-                      formData.metadata.taskType === opt.value
-                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-                        : "border-gray-300 hover:border-gray-400 dark:border-gray-700"
-                )}
-              >
-                    <div className="font-medium text-sm text-gray-900 dark:text-gray-50">{opt.label}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{opt.desc}</div>
-                    <div className="text-xs text-gray-400 mt-1">{opt.example}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                Duration
-              </label>
-              <Input
-                value={formData.metadata.duration || ''}
-                onChange={(e) => updateMetadata('duration', e.target.value)}
-                placeholder="e.g., 6 months"
-              />
             </div>
           </div>
         )
@@ -344,7 +290,7 @@ function NewSubmissionContent() {
               <Input
                 type="number"
                 value={formData.metadata.audienceSize || ''}
-                onChange={(e) => updateMetadata('audienceSize', parseInt(e.target.value))}
+                onChange={(e) => updateMetadata('audienceSize', e.target.value === '' ? undefined : parseInt(e.target.value))}
                 placeholder="e.g., 200"
               />
             </div>
@@ -378,12 +324,15 @@ function NewSubmissionContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Category Selection */}
+          {/* Category Selection - Research and Outreach only; Teaching and Administrative are evaluated by the department */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+            <div className="mb-4 p-3 rounded-lg bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 text-sm text-primary-800 dark:text-primary-200">
+              Teaching and Administrative criteria are evaluated by your department and will appear in your score overview.
+            </div>
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-4 uppercase tracking-wider">
               Category
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {(Object.entries(categoryConfig) as [Category, typeof categoryConfig.research][]).map(([key, cfg]) => {
                 const Icon = cfg.icon
                 return (
@@ -400,7 +349,7 @@ function NewSubmissionContent() {
                   >
                     <Icon className={cn(
                       "h-5 w-5 mb-2",
-                      category === key ? "text-primary-600" : "text-gray-400"
+                      category === key ? "text-primary-600 dark:text-primary-400" : "text-gray-400 dark:text-gray-500"
                     )} />
                     <div className="font-medium text-sm text-gray-900 dark:text-gray-50">{cfg.label}</div>
                     <div className="text-xs text-gray-500 mt-0.5">Max {cfg.maxPoints} pts</div>
@@ -477,7 +426,7 @@ function NewSubmissionContent() {
                             "py-2 px-3 text-sm rounded-md border transition-colors flex items-center justify-center gap-2",
                             formData.evidenceType === opt.value
                               ? "border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
-                              : "border-gray-300 hover:border-gray-400 dark:border-gray-700"
+                              : "border-gray-300 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-600"
                   )}
                 >
                           <opt.icon className="h-4 w-4" />
@@ -492,20 +441,35 @@ function NewSubmissionContent() {
                       {formData.evidenceType === 'link' ? 'URL' : formData.evidenceType === 'file' ? 'File' : 'Description'}
                       <span className="text-danger-500"> *</span>
                 </label>
+                {uploadError && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">{uploadError}</p>
+                )}
                 {formData.evidenceType === 'text' ? (
                   <textarea
                     value={formData.evidenceValue}
                         onChange={(e) => setFormData({ ...formData, evidenceValue: e.target.value })}
-                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[80px] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm min-h-[80px] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:focus:border-primary-400 dark:focus:ring-primary-400/20"
                     placeholder="Describe your evidence"
                     required
                   />
+                ) : formData.evidenceType === 'file' ? (
+                  <FileImageUpload
+                    value={formData.evidenceValue}
+                    onUpload={handleUpload}
+                    onClear={clearFile}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                    maxSizeMB={10}
+                    disabled={loading}
+                    error={uploadError}
+                    valueImageBaseUrl={process.env.NEXT_PUBLIC_API_URL}
+                    aria-label="Upload file or image as evidence"
+                  />
                 ) : (
                   <Input
-                    type={formData.evidenceType === 'link' ? 'url' : 'text'}
+                    type="url"
                     value={formData.evidenceValue}
-                        onChange={(e) => setFormData({ ...formData, evidenceValue: e.target.value })}
-                        placeholder={formData.evidenceType === 'link' ? 'https://doi.org/...' : 'Select file...'}
+                    onChange={(e) => setFormData({ ...formData, evidenceValue: e.target.value })}
+                    placeholder="https://doi.org/..."
                     required
                   />
                 )}
@@ -514,11 +478,11 @@ function NewSubmissionContent() {
               </div>
             </div>
 
-            {/* Sidebar - Points Calculator */}
-            <div className="space-y-6">
-              <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-900/30 rounded-lg p-6 sticky top-24">
+            {/* Sidebar - Points Preview and Actions (stacked, no overlap) */}
+            <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+              <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-900/30 rounded-lg p-6 shrink-0">
                 <div className="flex items-center gap-2 mb-4">
-                  <Calculator className="h-5 w-5 text-primary-600" />
+                  <Calculator className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                   <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100 uppercase tracking-wider">
                     Points Preview
                   </h3>
@@ -557,15 +521,14 @@ function NewSubmissionContent() {
                 </div>
               </div>
 
-              {/* Submit Actions */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 shrink-0">
                 <div className="space-y-3">
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Submitting...' : 'Submit for Review'}
                   </Button>
                   <Button type="button" variant="outline" className="w-full" onClick={() => router.back()} disabled={loading}>
-              Cancel
-            </Button>
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>

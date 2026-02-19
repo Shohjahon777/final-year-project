@@ -111,7 +111,7 @@ function Drawer({ open, onOpenChange, children, defaultFullscreen = false }: Dra
         role="dialog"
         aria-modal="true"
         className={cn(
-          'fixed top-0 right-0 z-[100] flex flex-col bg-white dark:bg-gray-900 shadow-2xl h-screen',
+          'fixed top-0 right-0 z-[100] flex flex-col bg-white dark:bg-gray-900 shadow-2xl h-screen bg-mesh-lines',
           'transition-transform duration-300 ease-out',
           'w-[90vw] md:w-[60vw] lg:w-[50vw]',
           fullscreen ? 'w-full md:w-full lg:w-full max-w-none' : 'max-w-4xl',
@@ -343,13 +343,25 @@ interface DrawerAttachment {
   size?: string
 }
 
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i
+function isImagePath(path: string): boolean {
+  return IMAGE_EXT.test(path)
+}
+function getFileUrl(value: string, baseUrl: string): string {
+  if (typeof value !== 'string') return ''
+  if (value.startsWith('http://') || value.startsWith('https://')) return value
+  return baseUrl + (value.startsWith('/') ? value : `/${value}`)
+}
+
 interface DrawerAttachmentsProps {
   attachments: DrawerAttachment[]
   onDownloadAll?: () => void
+  /** Base URL for file attachments (e.g. API origin without /api). When set, file links work and images show preview. */
+  uploadBaseUrl?: string
   className?: string
 }
 
-function DrawerAttachments({ attachments, onDownloadAll, className }: DrawerAttachmentsProps) {
+function DrawerAttachments({ attachments, onDownloadAll, uploadBaseUrl = '', className }: DrawerAttachmentsProps) {
   return (
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between">
@@ -357,42 +369,62 @@ function DrawerAttachments({ attachments, onDownloadAll, className }: DrawerAtta
           {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
         </span>
         {onDownloadAll && attachments.length > 1 && (
-          <Button variant="ghost" size="sm" onClick={onDownloadAll} className="text-primary-600">
+          <Button variant="ghost" size="sm" onClick={onDownloadAll} className="text-primary-600 dark:text-primary-400">
             Download All
           </Button>
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        {attachments.map((attachment, index) => (
-          <div
-            key={index}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
-                {attachment.name}
-              </p>
-              {attachment.size && (
-                <p className="text-xs text-gray-500">{attachment.size}</p>
+        {attachments.map((attachment, index) => {
+          const fileUrl = attachment.type === 'file' && uploadBaseUrl ? getFileUrl(attachment.value, uploadBaseUrl) : ''
+          return (
+            <div
+              key={index}
+              className="flex flex-col gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 min-w-0"
+            >
+              {attachment.type === 'file' && uploadBaseUrl && isImagePath(attachment.value) && fileUrl && (
+                <div className="rounded border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-900">
+                  <img
+                    src={fileUrl}
+                    alt={attachment.name}
+                    className="max-h-32 w-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                </div>
               )}
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
+                    {attachment.name}
+                  </p>
+                  {attachment.size && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{attachment.size}</p>
+                  )}
+                </div>
+                {attachment.type === 'link' && (
+                  <a
+                    href={attachment.value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-xs flex-shrink-0"
+                  >
+                    Open
+                  </a>
+                )}
+                {attachment.type === 'file' && fileUrl && (
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-xs flex-shrink-0"
+                  >
+                    Open
+                  </a>
+                )}
+              </div>
             </div>
-            {attachment.type === 'link' && (
-              <a
-                href={attachment.value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 text-xs"
-              >
-                Open
-              </a>
-            )}
-            {attachment.type === 'file' && (
-              <button className="text-primary-600 hover:text-primary-700 text-xs">
-                Download
-              </button>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

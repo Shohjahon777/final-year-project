@@ -1,14 +1,17 @@
 import Submission, { ISubmission } from '../models/Submission'
 import Score, { IScore } from '../models/Score'
 import Penalty from '../models/Penalty'
+import User from '../models/User'
 import { AppError } from '../middleware/error.middleware'
 import mongoose from 'mongoose'
+import { getCurrentAcademicYear } from '../utils/academicYear'
+import { scoringService } from './scoring.service'
 
 /**
  * Get faculty dashboard summary
  */
 export async function getFacultyDashboard(userId: string) {
-  const currentYear = getCurrentAcademicYear()
+  const currentYear = await getCurrentAcademicYear()
 
   // Get current score
   const score = await Score.findOne({
@@ -153,13 +156,38 @@ export async function createSubmission(
     metadata?: Record<string, any>
   }
 ): Promise<ISubmission> {
-  // For now, calculatedPoints will be 0 - scoring engine will calculate later
-  // This will be updated when we implement the scoring service
+  // Get user for scoring calculation
+  const user = await User.findById(userId)
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+
+  // Validate metadata for the submission type
+  const metadataErrors = scoringService.validateMetadata(
+    submissionData.category,
+    submissionData.subcategory,
+    submissionData.metadata || {}
+  )
+
+  if (metadataErrors.length > 0) {
+    throw new AppError(
+      `Invalid metadata: ${metadataErrors.join(', ')}`,
+      400
+    )
+  }
+
+  // Calculate points using the scoring engine
+  const calculatedPoints = await scoringService.calculatePoints(
+    submissionData,
+    user
+  )
+
   const submission = new Submission({
     userId,
     ...submissionData,
-    calculatedPoints: 0,
+    calculatedPoints,
     status: 'pending',
+    academicYear: await getCurrentAcademicYear(),
     submittedAt: new Date(),
   })
 
@@ -192,9 +220,9 @@ export async function updateSubmission(
     throw new AppError('Submission not found', 404)
   }
 
-  if (submission.status !== 'pending') {
+  if (submission.status !== 'pending' && submission.status !== 'changes_requested') {
     throw new AppError(
-      'Cannot update submission that is not pending',
+      'Cannot update submission that is not pending or awaiting changes',
       400
     )
   }
@@ -207,6 +235,11 @@ export async function updateSubmission(
   if (updateData.metadata) {
     // Merge metadata
     Object.assign(submission.metadata, updateData.metadata)
+  }
+
+  // When professor resubmits after changes requested, set back to pending (keep adminNotes for reference)
+  if (submission.status === 'changes_requested') {
+    submission.status = 'pending'
   }
 
   await submission.save()
@@ -261,20 +294,3 @@ export async function getFacultyPenalties(userId: string) {
   return penalties
 }
 
-/**
- * Helper: Get current academic year (format: YYYY-YYYY)
- * Academic year runs from September to August
- */
-function getCurrentAcademicYear(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1 // 1-12
-
-  // If September (9) or later, current academic year is YYYY-YYYY+1
-  // If before September, current academic year is YYYY-1-YYYY
-  if (month >= 9) {
-    return `${year}-${year + 1}`
-  } else {
-    return `${year - 1}-${year}`
-  }
-}

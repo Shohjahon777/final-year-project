@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
-import { mockDashboardData } from '@/lib/mock-data'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import { facultyApi, DashboardData } from '@/lib/api/faculty'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SparklineChart } from '@/components/ui/sparkline-chart'
@@ -22,10 +22,50 @@ import {
 } from 'lucide-react'
 
 function DashboardContent() {
-  const [dashboardData] = useState(mockDashboardData)
   const router = useRouter()
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  const { scores, pendingSubmissions, approvedSubmissions, rejectedSubmissions, recentPenalties } = dashboardData
+  const loadDashboard = () => {
+    setError(null)
+    setLoading(true)
+    facultyApi
+      .getDashboard()
+      .then(setDashboardData)
+      .catch((err) => {
+        const message =
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to load dashboard'
+        setError(message)
+      })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    loadDashboard()
+  }, [mounted])
+
+  const scores = dashboardData?.scores ?? {
+    research: 0,
+    teaching: 0,
+    admin: 0,
+    outreach: 0,
+    totalPenalties: 0,
+    finalScore: 0,
+    outcome: 'contract_risk' as const,
+  }
+  const pendingSubmissions = dashboardData?.pendingSubmissions ?? 0
+  const approvedSubmissions = dashboardData?.approvedSubmissions ?? 0
+  const rejectedSubmissions = dashboardData?.rejectedSubmissions ?? 0
+  const recentPenalties = dashboardData?.recentPenalties ?? []
 
   // Generate trend data for each category (last 12 months)
   const generateTrendData = (currentValue: number, trend: 'up' | 'down' | 'stable' | 'peak') => {
@@ -91,7 +131,30 @@ function DashboardContent() {
 
   const totalPoints = scores.research + scores.teaching + scores.admin + scores.outreach
 
-  // Mock recent submissions data
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 text-red-700 dark:text-red-300 space-y-3">
+          <p>{error}</p>
+          <Button type="button" variant="outline" size="sm" onClick={loadDashboard}>
+            Retry
+          </Button>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Recent submissions placeholder (could be from API later)
   const recentSubmissions = [
     { id: 'SUB-001', title: 'Q1 Journal Publication - AI Research', type: 'research', status: 'pending', points: 14.0, date: '2 days ago' },
     { id: 'SUB-002', title: 'Conference Paper - IEEE', type: 'research', status: 'approved', points: 4.2, date: '1 week ago' },
@@ -374,7 +437,7 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Quick Actions */}
+        {/* Quick Actions - Research and Outreach only; Teaching/Admin evaluated by department */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -391,27 +454,27 @@ function DashboardContent() {
               </div>
             </button>
             <button
-                onClick={() => router.push('/dashboard/submissions/new?category=teaching')}
+                onClick={() => router.push('/dashboard/submissions/new?category=outreach')}
               className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors text-left group"
             >
               <div className="h-10 w-10 rounded-lg bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center group-hover:bg-primary-200 dark:group-hover:bg-primary-900/30 transition-colors">
                 <FileText className="h-5 w-5 text-primary-600 dark:text-primary-500" />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-50">Submit Teaching</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Feedback, materials, syllabus</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-50">Submit Outreach</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Workshops, seminars, community</div>
               </div>
             </button>
             <button
-                onClick={() => router.push('/dashboard/submissions/new?category=admin')}
+                onClick={() => router.push('/dashboard/scores')}
               className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors text-left group"
             >
               <div className="h-10 w-10 rounded-lg bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center group-hover:bg-primary-200 dark:group-hover:bg-primary-900/30 transition-colors">
-                <FileText className="h-5 w-5 text-primary-600 dark:text-primary-500" />
+                <TrendingUp className="h-5 w-5 text-primary-600 dark:text-primary-500" />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-50">Submit Admin/Service</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Committee work, events</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-50">View Teaching & Admin Score</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Evaluated by your department</div>
               </div>
             </button>
           </div>

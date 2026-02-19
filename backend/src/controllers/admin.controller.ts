@@ -64,11 +64,13 @@ export async function getFacultyById(req: AuthRequest, res: Response) {
  */
 export async function getAllSubmissions(req: AuthRequest, res: Response) {
   try {
-    const { status, category, userId, page, limit } = req.query
+    const { status, category, userId, submittedAfter, submittedBefore, page, limit } = req.query
     const result = await adminService.getAllSubmissions({
       status: status as string,
       category: category as string,
       userId: userId as string,
+      submittedAfter: submittedAfter as string,
+      submittedBefore: submittedBefore as string,
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
     })
@@ -147,6 +149,32 @@ export async function rejectSubmission(req: AuthRequest, res: Response) {
   } catch (error) {
     if (error instanceof AppError) throw error
     throw new AppError('Failed to reject submission', 500)
+  }
+}
+
+/**
+ * PUT /api/admin/submissions/:id/request-changes
+ */
+export async function requestChanges(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params
+    const { notes } = req.body
+    const adminId = req.user!.id
+
+    if (!notes) {
+      throw new AppError('Notes are required to request changes', 400)
+    }
+
+    const submission = await adminService.requestChanges(id, adminId, { notes })
+
+    res.json({
+      success: true,
+      message: 'Changes requested; submission sent back to professor',
+      data: { submission },
+    })
+  } catch (error) {
+    if (error instanceof AppError) throw error
+    throw new AppError('Failed to request changes', 500)
   }
 }
 

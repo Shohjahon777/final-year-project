@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Drawer,
@@ -27,10 +25,11 @@ import {
   User,
   FileText,
   Calculator,
-  Eye,
   Link as LinkIcon,
   MessageSquare,
   Tag,
+  TrendingDown,
+  Clock,
 } from 'lucide-react'
 import { adminApi, Penalty, CreatePenaltyData, Faculty } from '@/lib/api/admin'
 import { useToast } from '@/components/ui/toast'
@@ -80,7 +79,6 @@ const mockPenalties: Penalty[] = [
   },
 ]
 
-// Mock faculty list for the dropdown
 const mockFacultyList: Pick<Faculty, '_id' | 'firstName' | 'lastName' | 'email'>[] = [
   { _id: 'u1', firstName: 'John', lastName: 'Doe', email: 'john.doe@cau.edu' },
   { _id: 'u2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@cau.edu' },
@@ -128,13 +126,11 @@ export default function AdminPenaltiesPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [actionLoading, setActionLoading] = useState(false)
   const [facultyList, setFacultyList] = useState<Pick<Faculty, '_id' | 'firstName' | 'lastName' | 'email'>[]>([])
-  
-  // Drawer states
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | 'view'>('create')
   const [selectedPenalty, setSelectedPenalty] = useState<Penalty | null>(null)
-  
-  // Form state
+
   const [formData, setFormData] = useState<CreatePenaltyData>({
     userId: '',
     type: 'meeting',
@@ -154,12 +150,8 @@ export default function AdminPenaltiesPage() {
       })
       setPenalties(result.penalties)
       setTotalPages(result.pagination.pages)
-    } catch (err) {
-      // Use mock data
-      const filtered = mockPenalties.filter((p) => {
-        if (selectedType && p.type !== selectedType) return false
-        return true
-      })
+    } catch {
+      const filtered = mockPenalties.filter((p) => !selectedType || p.type === selectedType)
       setPenalties(filtered)
       setTotalPages(1)
     } finally {
@@ -181,7 +173,6 @@ export default function AdminPenaltiesPage() {
     fetchFacultyList()
   }, [selectedType, page])
 
-  // Filter penalties locally for search
   const filteredPenalties = penalties.filter((p) => {
     if (!search) return true
     return (
@@ -237,7 +228,6 @@ export default function AdminPenaltiesPage() {
       showError('Validation Error', 'Please fill in all required fields')
       return
     }
-
     setActionLoading(true)
     try {
       if (drawerMode === 'edit' && selectedPenalty) {
@@ -253,7 +243,7 @@ export default function AdminPenaltiesPage() {
       }
       closeDrawer()
       fetchPenalties()
-    } catch (err) {
+    } catch {
       showError('Error', 'Failed to save the penalty. Please try again.')
     } finally {
       setActionLoading(false)
@@ -262,265 +252,255 @@ export default function AdminPenaltiesPage() {
 
   const handleDelete = async (penaltyId: string) => {
     if (!confirm('Are you sure you want to delete this penalty?')) return
-    
     setActionLoading(true)
     try {
       await adminApi.deletePenalty(penaltyId)
       success('Penalty Deleted', 'The penalty has been removed')
       closeDrawer()
       fetchPenalties()
-    } catch (err) {
+    } catch {
       showError('Error', 'Failed to delete the penalty')
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Calculate totals
   const totalDeductions = penalties.reduce((sum, p) => sum + p.points, 0)
+  const meetingCount = penalties.filter(p => p.type === 'meeting').length
+  const deadlineCount = penalties.filter(p => p.type === 'deadline').length
 
-  const getTypeLabel = (type: string) => {
-    return penaltyTypes.find((t) => t.value === type)?.label || type
-  }
+  const getTypeLabel = (type: string) => penaltyTypes.find((t) => t.value === type)?.label || type
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-1">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Penalty Management</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Apply and manage faculty penalties
-          </p>
+          <h1 className="text-base font-bold text-gray-900 dark:text-gray-50 tracking-tight">Penalties</h1>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">2024-2025 • Real-time monitoring</p>
         </div>
-        <Button onClick={openCreateDrawer}>
-          <Plus className="h-4 w-4 mr-2" />
-          Apply Penalty
+        <Button size="sm" onClick={openCreateDrawer} className="h-7">
+          <Plus className="h-3 w-3 mr-1" />
+          <span className="text-[11px]">Apply</span>
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Penalties</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
-                  {penalties.length}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-warning-100 dark:bg-warning-900/30 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-warning-600" />
-              </div>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-2">
+        {/* Total */}
+        <div className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-800/50 p-2.5">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="h-6 w-6 rounded bg-gray-100 dark:bg-slate-700/50 flex items-center justify-center border border-gray-200 dark:border-slate-600/50">
+              <AlertTriangle className="h-3 w-3 text-gray-500 dark:text-slate-400" strokeWidth={1.5} />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Deductions</p>
-                <p className="text-2xl font-bold text-danger-600">{totalDeductions} pts</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-danger-600" />
-              </div>
+            <div className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400">
+              Count
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Academic Year</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">2024-2025</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-primary-600" />
-              </div>
+          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{penalties.length}</div>
+          <div className="text-[9px] text-gray-500 dark:text-slate-400 uppercase tracking-wide font-medium">Penalties</div>
+        </div>
+
+        {/* Deductions */}
+        <div className="relative overflow-hidden rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/25 p-2.5">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="h-6 w-6 rounded bg-red-100 dark:bg-red-500/10 flex items-center justify-center border border-red-200 dark:border-red-500/20">
+              <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" strokeWidth={1.5} />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400 tracking-tight">{totalDeductions}</div>
+            <div className="text-[10px] text-red-500 dark:text-red-400/60">pts</div>
+          </div>
+          <div className="text-[9px] text-red-500 dark:text-red-400/60 uppercase tracking-wide font-medium">Deductions</div>
+        </div>
+
+        {/* Meeting */}
+        <div className="relative overflow-hidden rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-950/25 p-2.5">
+          <div className="h-6 w-6 rounded bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center border border-amber-200 dark:border-amber-500/20 mb-1.5">
+            <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
+          </div>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight">{meetingCount}</div>
+          <div className="text-[9px] text-amber-500 dark:text-amber-400/60 uppercase tracking-wide font-medium">Meetings</div>
+          <div className="absolute top-2.5 right-2.5">
+            <svg className="w-8 h-8 transform -rotate-90">
+              <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-200 dark:text-slate-800/50" />
+              <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray={`${(meetingCount / (penalties.length || 1)) * 75} 75`} className="text-amber-500 dark:text-amber-500/40" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Deadline */}
+        <div className="relative overflow-hidden rounded-lg border border-orange-200 dark:border-orange-500/20 bg-orange-50 dark:bg-orange-950/25 p-2.5">
+          <div className="h-6 w-6 rounded bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center border border-orange-200 dark:border-orange-500/20 mb-1.5">
+            <Calendar className="h-3 w-3 text-orange-600 dark:text-orange-400" strokeWidth={1.5} />
+          </div>
+          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400 tracking-tight">{deadlineCount}</div>
+          <div className="text-[9px] text-orange-500 dark:text-orange-400/60 uppercase tracking-wide font-medium">Deadlines</div>
+          <div className="absolute top-2.5 right-2.5">
+            <svg className="w-8 h-8 transform -rotate-90">
+              <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="2" className="text-orange-200 dark:text-slate-800/50" />
+              <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray={`${(deadlineCount / (penalties.length || 1)) * 75} 75`} className="text-orange-500 dark:text-orange-500/40" />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+      {/* Table Container */}
+      <div className="rounded-lg border border-gray-200 dark:border-slate-800/50 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+        {/* Filter Bar */}
+        <div className="border-b border-gray-200 dark:border-slate-800/50 bg-gray-50/80 dark:bg-slate-900/50 px-3 py-2">
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 dark:text-slate-500" strokeWidth={1.5} />
               <Input
-                placeholder="Search by description or faculty name..."
+                placeholder="Search penalties, faculty..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-8 h-7 bg-white dark:bg-slate-800/30 border-gray-300 dark:border-slate-700/50 text-gray-900 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 text-[11px]"
               />
             </div>
             <select
               value={selectedType}
-              onChange={(e) => {
-                setSelectedType(e.target.value)
-                setPage(1)
-              }}
-              className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm dark:border-gray-700 dark:bg-gray-900"
+              onChange={(e) => { setSelectedType(e.target.value); setPage(1) }}
+              className="h-7 px-2 rounded bg-white dark:bg-slate-800/30 border border-gray-300 dark:border-slate-700/50 text-gray-900 dark:text-slate-200 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">All Types</option>
               {penaltyTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
+                <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
+            <div className="px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800/30 border border-gray-200 dark:border-slate-700/50 text-[9px] text-gray-500 dark:text-slate-400 font-mono">
+              {filteredPenalties.length}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Penalties Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Penalties</CardTitle>
-          <CardDescription>Penalties applied this academic year</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+        {/* Table */}
+        {loading ? (
+          <div className="flex items-center justify-center h-48">
+            <div className="text-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 dark:border-slate-800 border-t-blue-500 mx-auto" />
+              <p className="mt-2 text-[10px] text-gray-500 dark:text-slate-500">Loading...</p>
             </div>
-          ) : filteredPenalties.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No penalties found.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Faculty
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Points
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredPenalties.map((penalty) => (
-                    <tr
-                      key={penalty._id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                      onClick={() => openViewDrawer(penalty)}
+          </div>
+        ) : filteredPenalties.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <AlertTriangle className="h-10 w-10 text-gray-300 dark:text-slate-700 mb-2" />
+            <h3 className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-0.5">No penalties found</h3>
+            <p className="text-[10px] text-gray-400 dark:text-slate-500">Adjust filters</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-slate-800/50">
+            {filteredPenalties.map((penalty) => {
+              const absPoints = Math.abs(penalty.points)
+              const severityColor = absPoints >= 10 ? 'red' : absPoints >= 5 ? 'orange' : 'amber'
+
+              return (
+                <div
+                  key={penalty._id}
+                  className="group flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-all duration-100 cursor-pointer"
+                  onClick={() => openViewDrawer(penalty)}
+                >
+                  {/* User */}
+                  <div className="flex items-center gap-2.5 w-52">
+                    <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-gray-600 dark:text-slate-300 font-semibold text-[11px] border border-gray-200 dark:border-slate-700/50 flex-shrink-0">
+                      {penalty.userId.firstName[0]}{penalty.userId.lastName[0]}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-xs text-gray-900 dark:text-white truncate tracking-tight">
+                        {penalty.userId.firstName} {penalty.userId.lastName}
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-slate-500 truncate font-mono">
+                        {penalty.userId.email}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Infraction */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className={cn(
+                        'px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider',
+                        penalty.type === 'meeting' && 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20',
+                        penalty.type === 'deadline' && 'bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20',
+                        penalty.type === 'academic_dishonesty' && 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20'
+                      )}>
+                        {getTypeLabel(penalty.type)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-700 dark:text-slate-300 truncate">{penalty.description}</div>
+                  </div>
+
+                  {/* Score */}
+                  <div className={cn(
+                    'px-3 py-1.5 rounded-lg font-bold text-sm border shadow-sm flex-shrink-0',
+                    severityColor === 'red' && 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30',
+                    severityColor === 'orange' && 'bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/30',
+                    severityColor === 'amber' && 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                  )}>
+                    {penalty.points}
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-[11px] text-gray-400 dark:text-slate-500 font-mono w-24 flex-shrink-0">
+                    {formatDate(penalty.appliedAt)}
+                  </div>
+
+                  {/* Status */}
+                  <div className="flex items-center gap-1.5 w-16 flex-shrink-0">
+                    <div className="h-2 w-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
+                    <span className="text-[10px] text-red-500 dark:text-red-400 font-medium uppercase tracking-wide">Live</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditDrawer(penalty) }}
+                      className="h-7 w-7 rounded-md flex items-center justify-center bg-gray-100 dark:bg-slate-800/50 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-gray-200 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-500/30 text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-100"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-xs font-medium">
-                            {penalty.userId.firstName[0]}
-                            {penalty.userId.lastName[0]}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-50">
-                              {penalty.userId.firstName} {penalty.userId.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">{penalty.userId.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={cn('px-2 py-1 rounded text-xs font-medium', typeColors[penalty.type])}>
-                          {getTypeLabel(penalty.type)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 max-w-xs">
-                        <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                          {penalty.description}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-lg font-bold text-danger-600">{penalty.points}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(penalty.appliedAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openViewDrawer(penalty)
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditDrawer(penalty)
-                            }}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-danger-600"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDelete(penalty._id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      <Edit2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(penalty._id) }}
+                      className="h-7 w-7 rounded-md flex items-center justify-center bg-gray-100 dark:bg-slate-800/50 hover:bg-red-100 dark:hover:bg-red-500/20 border border-gray-200 dark:border-slate-700/50 hover:border-red-300 dark:hover:border-red-500/30 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all duration-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">Page {page} of {totalPages}</p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-slate-800/50">
+          <p className="text-[10px] text-gray-500 dark:text-slate-500 font-mono">Page {page} / {totalPages}</p>
+          <div className="flex items-center gap-1">
+            <button
               disabled={page === 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="h-6 px-2 rounded flex items-center gap-1 bg-gray-100 dark:bg-slate-800/30 border border-gray-200 dark:border-slate-700/50 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-medium transition-all"
             >
-              <ChevronLeft className="h-4 w-4" /> Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              <ChevronLeft className="h-3 w-3" strokeWidth={1.5} />
+              Prev
+            </button>
+            <button
               disabled={page === totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="h-6 px-2 rounded flex items-center gap-1 bg-gray-100 dark:bg-slate-800/30 border border-gray-200 dark:border-slate-700/50 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-medium transition-all"
             >
-              Next <ChevronRight className="h-4 w-4" />
-            </Button>
+              Next
+              <ChevronRight className="h-3 w-3" strokeWidth={1.5} />
+            </button>
           </div>
         </div>
       )}
 
-      {/* Penalty Drawer */}
+      {/* Drawer */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         {drawerMode === 'view' && selectedPenalty ? (
           <>
@@ -531,18 +511,14 @@ export default function AdminPenaltiesPage() {
                 </span>
               </div>
               <DrawerTitle>Penalty Details</DrawerTitle>
-              <DrawerDescription>
-                Applied on {formatDateFull(selectedPenalty.appliedAt)}
-              </DrawerDescription>
+              <DrawerDescription>Applied on {formatDateFull(selectedPenalty.appliedAt)}</DrawerDescription>
             </DrawerHeader>
 
             <DrawerContent className="space-y-6">
-              {/* Faculty Information */}
               <DrawerSection icon={<User className="h-4 w-4" />} label="Faculty Member">
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 font-medium">
-                    {selectedPenalty.userId.firstName[0]}
-                    {selectedPenalty.userId.lastName[0]}
+                    {selectedPenalty.userId.firstName[0]}{selectedPenalty.userId.lastName[0]}
                   </div>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-gray-50">
@@ -553,14 +529,12 @@ export default function AdminPenaltiesPage() {
                 </div>
               </DrawerSection>
 
-              {/* Description */}
               <DrawerSection icon={<MessageSquare className="h-4 w-4" />} label="Description">
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
                   {selectedPenalty.description}
                 </div>
               </DrawerSection>
 
-              {/* Points */}
               <DrawerSection icon={<Calculator className="h-4 w-4" />} label="Points Deduction">
                 <div className="p-4 bg-danger-50 dark:bg-danger-900/20 rounded-lg border border-danger-200 dark:border-danger-800">
                   <p className="text-3xl font-bold text-danger-600">{selectedPenalty.points}</p>
@@ -568,16 +542,11 @@ export default function AdminPenaltiesPage() {
                 </div>
               </DrawerSection>
 
-              {/* Evidence */}
               {selectedPenalty.evidence && (
                 <DrawerSection icon={<LinkIcon className="h-4 w-4" />} label="Evidence">
                   <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <a
-                      href={selectedPenalty.evidence}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 text-sm flex items-center gap-2"
-                    >
+                    <a href={selectedPenalty.evidence} target="_blank" rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-700 text-sm flex items-center gap-2">
                       <LinkIcon className="h-4 w-4" />
                       {selectedPenalty.evidence}
                     </a>
@@ -585,7 +554,6 @@ export default function AdminPenaltiesPage() {
                 </DrawerSection>
               )}
 
-              {/* Details */}
               <DrawerSection icon={<FileText className="h-4 w-4" />} label="Details">
                 <div className="space-y-1">
                   <DrawerInfoRow icon={<Calendar className="h-4 w-4" />} label="Applied On">
@@ -602,50 +570,34 @@ export default function AdminPenaltiesPage() {
             </DrawerContent>
 
             <DrawerFooter>
-              <Button variant="outline" onClick={closeDrawer}>
-                Close
+              <Button variant="outline" onClick={closeDrawer}>Close</Button>
+              <Button variant="outline" onClick={() => {
+                setDrawerMode('edit')
+                setFormData({
+                  userId: selectedPenalty.userId._id,
+                  type: selectedPenalty.type,
+                  description: selectedPenalty.description,
+                  points: Math.abs(selectedPenalty.points),
+                  evidence: selectedPenalty.evidence,
+                })
+              }}>
+                <Edit2 className="h-4 w-4 mr-2" />Edit
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDrawerMode('edit')
-                  setFormData({
-                    userId: selectedPenalty.userId._id,
-                    type: selectedPenalty.type,
-                    description: selectedPenalty.description,
-                    points: Math.abs(selectedPenalty.points),
-                    evidence: selectedPenalty.evidence,
-                  })
-                }}
-              >
-                <Edit2 className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => handleDelete(selectedPenalty._id)}
-                disabled={actionLoading}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+              <Button variant="danger" onClick={() => handleDelete(selectedPenalty._id)} disabled={actionLoading}>
+                <Trash2 className="h-4 w-4 mr-2" />Delete
               </Button>
             </DrawerFooter>
           </>
         ) : (
           <>
             <DrawerHeader breadcrumb={`Penalties / ${drawerMode === 'create' ? 'New' : 'Edit'}`}>
-              <DrawerTitle>
-                {drawerMode === 'create' ? 'Apply New Penalty' : 'Edit Penalty'}
-              </DrawerTitle>
+              <DrawerTitle>{drawerMode === 'create' ? 'Apply New Penalty' : 'Edit Penalty'}</DrawerTitle>
               <DrawerDescription>
-                {drawerMode === 'create'
-                  ? 'Apply a penalty deduction to a faculty member'
-                  : 'Update the penalty details'}
+                {drawerMode === 'create' ? 'Apply a penalty deduction to a faculty member' : 'Update the penalty details'}
               </DrawerDescription>
             </DrawerHeader>
 
             <DrawerContent className="space-y-6">
-              {/* Faculty Selection */}
               <DrawerSection icon={<User className="h-4 w-4" />} label="Faculty Member">
                 <select
                   value={formData.userId}
@@ -655,45 +607,27 @@ export default function AdminPenaltiesPage() {
                 >
                   <option value="">Select faculty member...</option>
                   {facultyList.map((f) => (
-                    <option key={f._id} value={f._id}>
-                      {f.firstName} {f.lastName} ({f.email})
-                    </option>
+                    <option key={f._id} value={f._id}>{f.firstName} {f.lastName} ({f.email})</option>
                   ))}
                 </select>
-                {!formData.userId && (
-                  <p className="text-xs text-danger-500 mt-1">Required</p>
-                )}
+                {!formData.userId && <p className="text-xs text-danger-500 mt-1">Required</p>}
               </DrawerSection>
 
-              {/* Penalty Type */}
               <DrawerSection icon={<Tag className="h-4 w-4" />} label="Penalty Type">
                 <div className="space-y-2">
                   {penaltyTypes.map((type) => (
-                    <label
-                      key={type.value}
-                      className={cn(
-                        'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                        formData.type === type.value
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="penaltyType"
-                        value={type.value}
-                        checked={formData.type === type.value}
-                        onChange={() => handleTypeChange(type.value as any)}
-                        className="mt-1"
-                      />
+                    <label key={type.value} className={cn(
+                      'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                      formData.type === type.value
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                    )}>
+                      <input type="radio" name="penaltyType" value={type.value} checked={formData.type === type.value}
+                        onChange={() => handleTypeChange(type.value as any)} className="mt-1" />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900 dark:text-gray-50">
-                            {type.label}
-                          </span>
-                          <span className="text-sm font-bold text-danger-600">
-                            {type.points} pts
-                          </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-50">{type.label}</span>
+                          <span className="text-sm font-bold text-danger-600">{type.points} pts</span>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">{type.description}</p>
                       </div>
@@ -702,30 +636,20 @@ export default function AdminPenaltiesPage() {
                 </div>
               </DrawerSection>
 
-              {/* Description */}
               <DrawerSection icon={<MessageSquare className="h-4 w-4" />} label="Description">
-                <textarea
-                  value={formData.description}
+                <textarea value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Describe the reason for this penalty..."
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 placeholder:text-gray-400 text-sm resize-none"
-                />
-                {!formData.description && (
-                  <p className="text-xs text-danger-500 mt-1">Required</p>
-                )}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 placeholder:text-gray-400 text-sm resize-none" />
+                {!formData.description && <p className="text-xs text-danger-500 mt-1">Required</p>}
               </DrawerSection>
 
-              {/* Points */}
               <DrawerSection icon={<Calculator className="h-4 w-4" />} label="Points Deduction">
                 <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    value={formData.points}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
-                    className="w-24"
-                    min={1}
-                  />
+                  <Input type="number" value={formData.points}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, points: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                    className="w-24" min={1} />
                   <div className="flex-1">
                     <div className="p-3 bg-danger-50 dark:bg-danger-900/20 rounded-lg border border-danger-200 dark:border-danger-800">
                       <p className="text-sm text-danger-600">
@@ -736,37 +660,22 @@ export default function AdminPenaltiesPage() {
                 </div>
               </DrawerSection>
 
-              {/* Evidence (Optional) */}
               <DrawerSection icon={<LinkIcon className="h-4 w-4" />} label="Evidence (Optional)">
-                <Input
-                  value={formData.evidence || ''}
+                <Input value={formData.evidence || ''}
                   onChange={(e) => setFormData((prev) => ({ ...prev, evidence: e.target.value }))}
-                  placeholder="Link to supporting evidence..."
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Provide a link to any supporting documentation
-                </p>
+                  placeholder="Link to supporting evidence..." />
+                <p className="text-xs text-gray-500 mt-1">Provide a link to any supporting documentation</p>
               </DrawerSection>
             </DrawerContent>
 
             <DrawerFooter>
-              <Button variant="outline" onClick={closeDrawer}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleSubmit}
-                disabled={actionLoading || !formData.userId || !formData.description}
-              >
+              <Button variant="outline" onClick={closeDrawer}>Cancel</Button>
+              <Button variant="danger" onClick={handleSubmit}
+                disabled={actionLoading || !formData.userId || !formData.description}>
                 {actionLoading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : drawerMode === 'edit' ? (
-                  'Update Penalty'
-                ) : (
-                  <>
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Apply Penalty
-                  </>
+                ) : drawerMode === 'edit' ? 'Update Penalty' : (
+                  <><AlertTriangle className="h-4 w-4 mr-2" />Apply Penalty</>
                 )}
               </Button>
             </DrawerFooter>

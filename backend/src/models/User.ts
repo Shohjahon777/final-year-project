@@ -9,6 +9,9 @@ export interface IUser extends Document {
   lastName: string
   department: string
   isActive: boolean
+  mustChangePassword: boolean
+  passwordResetToken?: string
+  passwordResetExpires?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -60,6 +63,12 @@ const UserSchema: Schema = new Schema(
       type: Boolean,
       default: true,
     },
+    mustChangePassword: {
+      type: Boolean,
+      default: true,
+    },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
   },
   {
     timestamps: true,

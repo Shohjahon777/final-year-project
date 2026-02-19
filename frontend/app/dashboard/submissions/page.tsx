@@ -17,7 +17,8 @@ import {
   DrawerSection,
   DrawerInfoRow,
 } from '@/components/ui/drawer'
-import { getMockSubmissions, Submission } from '@/lib/mock-data'
+import { facultyApi } from '@/lib/api/faculty'
+import type { Submission } from '@/lib/api/faculty'
 import { cn } from '@/lib/utils'
 import { 
   Search, 
@@ -44,6 +45,36 @@ import {
 } from 'lucide-react'
 
 type EvidenceType = 'link' | 'file' | 'text'
+
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i
+function getUploadBaseUrl(): string {
+  const base = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) || ''
+  return base.replace(/\/api\/?$/, '')
+}
+function isImagePath(path: string): boolean {
+  return IMAGE_EXT.test(path)
+}
+function getFileUrl(value: string): string {
+  if (typeof value !== 'string') return ''
+  if (value.startsWith('http://') || value.startsWith('https://')) return value
+  const base = getUploadBaseUrl()
+  return base + (value.startsWith('/') ? value : `/${value}`)
+}
+
+function EvidenceImagePreview({ url }: { url: string }) {
+  const [error, setError] = useState(false)
+  if (error || !url) return null
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-800">
+      <img
+        src={url}
+        alt="Evidence"
+        className="max-h-48 w-full object-contain"
+        onError={() => setError(true)}
+      />
+    </div>
+  )
+}
 
 // Tab data
 const tabs = [
@@ -85,10 +116,11 @@ function SubmissionsContent() {
     metadata: {} as Record<string, any>,
   })
   const [saving, setSaving] = useState(false)
+  const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 })
 
   useEffect(() => {
     loadSubmissions()
-  }, [filters])
+  }, [filters.status, filters.category, filters.page, filters.limit])
 
   useEffect(() => {
     // Sync tab with filter
@@ -99,13 +131,35 @@ function SubmissionsContent() {
     }))
   }, [activeTab])
 
-  const loadSubmissions = () => {
+  const loadSubmissions = async () => {
     setLoading(true)
-    const result = getMockSubmissions(filters)
-    setSubmissions(result.submissions)
-    setPagination(result.pagination)
-    setLoading(false)
+    try {
+      const result = await facultyApi.getSubmissions({
+        status: (filters.status && ['pending', 'approved', 'rejected'].includes(filters.status) ? filters.status : undefined) as 'pending' | 'approved' | 'rejected' | undefined,
+        category: (filters.category && ['research', 'teaching', 'admin', 'outreach'].includes(filters.category) ? filters.category : undefined) as 'research' | 'teaching' | 'admin' | 'outreach' | undefined,
+        page: filters.page,
+        limit: filters.limit,
+      })
+      setSubmissions(result.submissions ?? [])
+      setPagination(result.pagination ?? { page: 1, limit: 10, total: 0, pages: 0 })
+    } catch {
+      setSubmissions([])
+      setPagination({ page: 1, limit: 10, total: 0, pages: 0 })
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => {
+    facultyApi.getDashboard().then((d) => {
+      setCounts({
+        all: (d.pendingSubmissions ?? 0) + (d.approvedSubmissions ?? 0) + (d.rejectedSubmissions ?? 0),
+        pending: d.pendingSubmissions ?? 0,
+        approved: d.approvedSubmissions ?? 0,
+        rejected: d.rejectedSubmissions ?? 0,
+      })
+    }).catch(() => {})
+  }, [])
 
   const openSubmissionDrawer = (submission: Submission) => {
     setSelectedSubmission(submission)
@@ -141,26 +195,32 @@ function SubmissionsContent() {
   const handleSaveEdit = async () => {
     if (!selectedSubmission) return
     setSaving(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Update local state (in real app, this would refetch from API)
-    const updatedSubmission: Submission = {
-      ...selectedSubmission,
-      title: editFormData.title,
-      description: editFormData.description,
-      evidence: {
-        type: editFormData.evidenceType,
-        value: editFormData.evidenceValue,
-      },
-      metadata: editFormData.metadata,
+    try {
+      const updated = await facultyApi.updateSubmission(selectedSubmission._id, {
+        title: editFormData.title,
+        description: editFormData.description,
+        evidence: {
+          type: editFormData.evidenceType,
+          value: editFormData.evidenceValue,
+        },
+        metadata: editFormData.metadata,
+      })
+      setSelectedSubmission(updated)
+      setDrawerMode('view')
+      loadSubmissions()
+      facultyApi.getDashboard().then((d) => {
+        setCounts({
+          all: (d.pendingSubmissions ?? 0) + (d.approvedSubmissions ?? 0) + (d.rejectedSubmissions ?? 0),
+          pending: d.pendingSubmissions ?? 0,
+          approved: d.approvedSubmissions ?? 0,
+          rejected: d.rejectedSubmissions ?? 0,
+        })
+      }).catch(() => {})
+    } catch {
+      // Error could be shown via toast
+    } finally {
+      setSaving(false)
     }
-    
-    setSelectedSubmission(updatedSubmission)
-    setDrawerMode('view')
-    setSaving(false)
-    loadSubmissions()
   }
 
   const updateMetadata = (key: string, value: any) => {
@@ -177,6 +237,13 @@ function SubmissionsContent() {
           <Badge variant="warning">
             <Clock className="h-3 w-3 mr-1" />
             Pending
+          </Badge>
+        )
+      case 'changes_requested':
+        return (
+          <Badge variant="warning" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+            <MessageSquare className="h-3 w-3 mr-1" />
+            Changes requested
           </Badge>
         )
       case 'approved':
@@ -232,16 +299,7 @@ function SubmissionsContent() {
     sub.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Get count for each status tab
-  const getCounts = () => {
-    const allSubmissions = getMockSubmissions({ status: '', category: filters.category, page: 1, limit: 100 })
-    const pending = allSubmissions.submissions.filter(s => s.status === 'pending').length
-    const approved = allSubmissions.submissions.filter(s => s.status === 'approved').length
-    const rejected = allSubmissions.submissions.filter(s => s.status === 'rejected').length
-    return { all: allSubmissions.submissions.length, pending, approved, rejected }
-  }
-
-  const counts = getCounts()
+  // counts from dashboard (set in useEffect)
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -258,6 +316,13 @@ function SubmissionsContent() {
           borderColor: 'border-warning-200 dark:border-warning-900/30',
           textColor: 'text-warning-700 dark:text-warning-300',
           message: 'Your submission is being reviewed'
+        }
+      case 'changes_requested':
+        return { 
+          bgColor: 'bg-amber-50 dark:bg-amber-900/10',
+          borderColor: 'border-amber-200 dark:border-amber-900/30',
+          textColor: 'text-amber-700 dark:text-amber-300',
+          message: 'Admin requested changes. Edit and resubmit.'
         }
       case 'rejected':
         return { 
@@ -344,8 +409,9 @@ function SubmissionsContent() {
 
           {/* Category Filter */}
                 <select
+                  title='filter'
                   value={filters.category}
-            onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value, page: 1 }))}
+                  onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value, page: 1 }))}
             className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                 >
                   <option value="">All Categories</option>
@@ -439,7 +505,7 @@ function SubmissionsContent() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {submission.status === 'pending' && (
+                        {(submission.status === 'pending' || submission.status === 'changes_requested') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -517,11 +583,12 @@ function SubmissionsContent() {
                   )}>
                     <div className="flex items-center gap-3">
                       {selectedSubmission.status === 'pending' && <Clock className={cn("h-5 w-5", statusConfig.textColor)} />}
+                      {selectedSubmission.status === 'changes_requested' && <MessageSquare className={cn("h-5 w-5", statusConfig.textColor)} />}
                       {selectedSubmission.status === 'approved' && <CheckCircle className={cn("h-5 w-5", statusConfig.textColor)} />}
                       {selectedSubmission.status === 'rejected' && <XCircle className={cn("h-5 w-5", statusConfig.textColor)} />}
                       <div>
                         <div className={cn("font-medium capitalize", statusConfig.textColor)}>
-                          {selectedSubmission.status}
+                          {selectedSubmission.status === 'changes_requested' ? 'Changes requested' : selectedSubmission.status}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {statusConfig.message}
@@ -561,26 +628,36 @@ function SubmissionsContent() {
 
               {/* Evidence */}
               <DrawerSection icon={<LinkIcon className="h-4 w-4" />} label="Evidence">
-                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50">
                   {selectedSubmission.evidence.type === 'link' ? (
                     <a
                       href={selectedSubmission.evidence.value}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-primary-600 hover:text-primary-700 text-sm"
+                      className="flex items-center gap-2 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm"
                     >
                       <ExternalLink className="h-4 w-4" />
                       <span className="truncate">{selectedSubmission.evidence.value}</span>
                     </a>
                   ) : selectedSubmission.evidence.type === 'file' ? (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                        <FileText className="h-4 w-4" />
-                        <span className="text-sm">{selectedSubmission.evidence.value}</span>
+                    <div className="space-y-2">
+                      {isImagePath(selectedSubmission.evidence.value) && (
+                        <EvidenceImagePreview url={getFileUrl(selectedSubmission.evidence.value)} />
+                      )}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 min-w-0">
+                          <FileText className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm truncate">{selectedSubmission.evidence.value}</span>
+                        </div>
+                        <a
+                          href={getFileUrl(selectedSubmission.evidence.value)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm h-8 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                        >
+                          Open
+                        </a>
                       </div>
-                      <Button variant="ghost" size="sm" className="text-primary-600">
-                        Download
-                      </Button>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -622,7 +699,7 @@ function SubmissionsContent() {
                     <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50">
                       {selectedSubmission.calculatedPoints.toFixed(2)}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {selectedSubmission.status === 'approved' 
                         ? 'Points added to your score'
                         : selectedSubmission.status === 'pending'
@@ -685,10 +762,10 @@ function SubmissionsContent() {
               <Button variant="outline" onClick={closeDrawer}>
                 Close
               </Button>
-              {selectedSubmission.status === 'pending' && (
+              {(selectedSubmission.status === 'pending' || selectedSubmission.status === 'changes_requested') && (
                 <Button variant="outline" onClick={openEditMode}>
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit Submission
+                  {selectedSubmission.status === 'changes_requested' ? 'Edit and resubmit' : 'Edit Submission'}
                 </Button>
               )}
             </DrawerFooter>
@@ -804,7 +881,7 @@ function SubmissionsContent() {
                           <Input
                             type="number"
                             value={value}
-                            onChange={(e) => updateMetadata(key, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateMetadata(key, e.target.value === '' ? '' : parseFloat(e.target.value))}
                           />
                         ) : (
                           <Input

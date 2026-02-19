@@ -1,10 +1,10 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { SidebarProvider, SidebarTrigger, SidebarInset, useSidebar } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { Button } from '@/components/ui/button'
-import { ChevronRight, Search, User } from 'lucide-react'
+import { ChevronRight, User } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { cn } from '@/lib/utils'
@@ -51,6 +51,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const router = useRouter()
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -69,17 +70,20 @@ export default function DashboardLayout({
               
               {/* Right side actions */}
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-gray-500">
-                  <Search className="h-5 w-5" />
-                </Button>
                 <NotificationBell />
                 <ThemeToggle />
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => router.push('/dashboard/profile')}
+                  aria-label="Go to profile"
+                >
                   <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
                     <User className="h-4 w-4 text-primary-600 dark:text-primary-400" />
                   </div>
-                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">Faculty</span>
+                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">Profile</span>
                 </Button>
               </div>
             </header>

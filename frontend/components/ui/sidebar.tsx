@@ -68,7 +68,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
         className={cn(
           'fixed md:sticky top-0 z-40 h-screen',
           'w-60 transition-transform duration-200',
-          'bg-white border-r border-gray-200',
+          'bg-white border-r border-gray-200 bg-mesh-grid',
           'dark:bg-gray-950 dark:border-gray-800',
           'flex flex-col',
           side === 'left' && 'left-0',
@@ -101,7 +101,7 @@ const SidebarContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex-1 overflow-y-auto px-4 py-2 scrollbar-hide', className)}
+    className={cn('flex-1 min-h-0 overflow-y-auto px-4 py-2 scrollbar-hide', className)}
     {...props}
   />
 ))
@@ -113,7 +113,7 @@ const SidebarFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex h-auto shrink-0 items-center gap-2 px-6 py-4', className)}
+    className={cn('flex shrink-0 items-center gap-2 px-4 py-3', className)}
     {...props}
   />
 ))

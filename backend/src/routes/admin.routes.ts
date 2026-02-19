@@ -20,6 +20,7 @@ router.get('/submissions', adminController.getAllSubmissions)
 router.get('/submissions/:id', adminController.getSubmissionById)
 router.put('/submissions/:id/approve', adminController.approveSubmission)
 router.put('/submissions/:id/reject', adminController.rejectSubmission)
+router.put('/submissions/:id/request-changes', adminController.requestChanges)
 router.put('/submissions/:id/points', adminController.adjustSubmissionPoints)
 
 // Penalty Management

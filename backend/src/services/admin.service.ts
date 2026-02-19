@@ -2,30 +2,20 @@ import User, { IUser } from '../models/User'
 import Submission, { ISubmission } from '../models/Submission'
 import Score, { IScore } from '../models/Score'
 import Penalty, { IPenalty } from '../models/Penalty'
+import Configuration from '../models/Configuration'
 import { AppError } from '../middleware/error.middleware'
 import mongoose from 'mongoose'
-
-/**
- * Get current academic year (format: YYYY-YYYY)
- */
-function getCurrentAcademicYear(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
-  if (month >= 9) {
-    return `${year}-${year + 1}`
-  } else {
-    return `${year - 1}-${year}`
-  }
-}
+import { getCurrentAcademicYear } from '../utils/academicYear'
 
 /**
  * Determine outcome based on final score
  */
 function determineOutcome(finalScore: number): 'outstanding' | 'satisfactory' | 'improvement_plan' | 'contract_risk' {
+  // Outcome bands per README requirements:
+  // Outstanding: 80-100, Satisfactory: 60-79, Improvement Plan: 50-59, Contract Risk: <50
   if (finalScore >= 80) return 'outstanding'
   if (finalScore >= 60) return 'satisfactory'
-  if (finalScore >= 40) return 'improvement_plan'
+  if (finalScore >= 50) return 'improvement_plan' // Fixed: was 40
   return 'contract_risk'
 }
 
@@ -33,7 +23,7 @@ function determineOutcome(finalScore: number): 'outstanding' | 'satisfactory' | 
  * Get admin dashboard statistics
  */
 export async function getAdminDashboard() {
-  const currentYear = getCurrentAcademicYear()
+  const currentYear = await getCurrentAcademicYear()
 
   // Get total faculty count
   const totalFaculty = await User.countDocuments({ role: 'faculty', isActive: true })
@@ -147,7 +137,7 @@ export async function getAllFaculty(filters: {
   ])
 
   // Get current scores for each faculty
-  const currentYear = getCurrentAcademicYear()
+  const currentYear = await getCurrentAcademicYear()
   const userIds = users.map((u) => u._id)
   const scores = await Score.find({
     userId: { $in: userIds },
@@ -220,6 +210,8 @@ export async function getAllSubmissions(filters: {
   status?: string
   category?: string
   userId?: string
+  submittedAfter?: string
+  submittedBefore?: string
   page?: number
   limit?: number
 }) {
@@ -241,7 +233,27 @@ export async function getAllSubmissions(filters: {
     query.userId = filters.userId
   }
 
-  const [submissions, total] = await Promise.all([
+  if (filters.submittedAfter || filters.submittedBefore) {
+    query.submittedAt = {}
+    if (filters.submittedAfter) {
+      query.submittedAt.$gte = new Date(filters.submittedAfter)
+    }
+    if (filters.submittedBefore) {
+      query.submittedAt.$lte = new Date(filters.submittedBefore)
+    }
+  }
+
+  // Base query for counts (same filters but no status so we get all status counts)
+  const countQuery: any = {}
+  if (filters.category) countQuery.category = filters.category
+  if (filters.userId) countQuery.userId = filters.userId
+  if (filters.submittedAfter || filters.submittedBefore) {
+    countQuery.submittedAt = {}
+    if (filters.submittedAfter) countQuery.submittedAt.$gte = new Date(filters.submittedAfter)
+    if (filters.submittedBefore) countQuery.submittedAt.$lte = new Date(filters.submittedBefore)
+  }
+
+  const [submissions, total, countByStatus, approvedPointsResult] = await Promise.all([
     Submission.find(query)
       .sort({ submittedAt: -1 })
       .skip(skip)
@@ -250,10 +262,28 @@ export async function getAllSubmissions(filters: {
       .populate('reviewedBy', 'firstName lastName')
       .lean(),
     Submission.countDocuments(query),
+    Submission.aggregate([
+      { $match: countQuery },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+    Submission.aggregate([
+      { $match: { ...countQuery, status: 'approved' } },
+      { $project: { pts: { $ifNull: ['$adjustedPoints', '$calculatedPoints'] } } },
+      { $group: { _id: null, total: { $sum: '$pts' } } },
+    ]),
   ])
+
+  const counts = { total: 0, pending: 0, approved: 0, rejected: 0, changes_requested: 0, totalPoints: 0 }
+  const totalAll = countByStatus.reduce((sum, item) => sum + item.count, 0)
+  counts.total = totalAll
+  countByStatus.forEach((item) => {
+    (counts as any)[item._id] = item.count
+  })
+  if (approvedPointsResult[0]?.total != null) counts.totalPoints = approvedPointsResult[0].total
 
   return {
     submissions,
+    counts,
     pagination: {
       page,
       limit,
@@ -334,6 +364,34 @@ export async function rejectSubmission(
   }
 
   submission.status = 'rejected'
+  submission.reviewedAt = new Date()
+  submission.reviewedBy = new mongoose.Types.ObjectId(adminId)
+  submission.adminNotes = data.notes
+
+  await submission.save()
+
+  return submission
+}
+
+/**
+ * Request changes on a submission (send back to professor for revision)
+ */
+export async function requestChanges(
+  submissionId: string,
+  adminId: string,
+  data: { notes: string }
+) {
+  const submission = await Submission.findById(submissionId)
+
+  if (!submission) {
+    throw new AppError('Submission not found', 404)
+  }
+
+  if (submission.status !== 'pending') {
+    throw new AppError('Submission has already been reviewed', 400)
+  }
+
+  submission.status = 'changes_requested'
   submission.reviewedAt = new Date()
   submission.reviewedBy = new mongoose.Types.ObjectId(adminId)
   submission.adminNotes = data.notes
@@ -450,7 +508,7 @@ export async function createPenalty(
     appliedBy: adminId,
     appliedAt: new Date(),
     evidence: data.evidence,
-    academicYear: getCurrentAcademicYear(),
+    academicYear: await getCurrentAcademicYear(),
   })
 
   await penalty.save()
@@ -533,7 +591,7 @@ export async function getAllScores(filters: {
   if (filters.academicYear) {
     query.academicYear = filters.academicYear
   } else {
-    query.academicYear = getCurrentAcademicYear()
+    query.academicYear = await getCurrentAcademicYear()
   }
 
   if (filters.outcome) {
@@ -565,12 +623,13 @@ export async function getAllScores(filters: {
  * Recalculate a faculty member's score
  */
 export async function recalculateScore(userId: string) {
-  const currentYear = getCurrentAcademicYear()
+  const currentYear = await getCurrentAcademicYear()
 
-  // Get all approved submissions for this user in current year
+  // Get all approved submissions for this user in current academic year ONLY
   const submissions = await Submission.find({
     userId,
     status: 'approved',
+    academicYear: currentYear,
   }).lean()
 
   // Calculate category totals
@@ -581,12 +640,13 @@ export async function recalculateScore(userId: string) {
     outreach: 0,
   }
 
-  // Category ceilings
+  // Fetch category ceilings from configuration (with fallback to hardcoded defaults)
+  const ceilingsConfig = await Configuration.find({ category: 'ceilings' }).lean()
   const ceilings = {
-    research: 40,
-    teaching: 30,
-    admin: 20,
-    outreach: 10,
+    research: ceilingsConfig.find(c => c.key === 'research_ceiling')?.value as number || 40,
+    teaching: ceilingsConfig.find(c => c.key === 'teaching_ceiling')?.value as number || 30,
+    admin: ceilingsConfig.find(c => c.key === 'admin_ceiling')?.value as number || 20,
+    outreach: ceilingsConfig.find(c => c.key === 'outreach_ceiling')?.value as number || 10,
   }
 
   for (const submission of submissions) {

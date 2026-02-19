@@ -122,6 +122,7 @@ export async function seedConfigurations(req: AuthRequest, res: Response) {
     })
   } catch (error) {
     if (error instanceof AppError) throw error
-    throw new AppError('Failed to seed configurations', 500)
+    const msg = error instanceof Error ? error.message : 'Failed to seed configurations'
+    throw new AppError(msg, 500)
   }
 }

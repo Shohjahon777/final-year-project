@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose'
+import { getCurrentAcademicYear } from '../utils/academicYear'
 
 export interface ISubmission extends Document {
   userId: mongoose.Types.ObjectId
@@ -13,8 +14,9 @@ export interface ISubmission extends Document {
   metadata: Record<string, any>
   calculatedPoints: number
   adjustedPoints?: number
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'changes_requested'
   adminNotes?: string
+  academicYear: string // e.g., "2025-2026"
   submittedAt: Date
   reviewedAt?: Date
   reviewedBy?: mongoose.Types.ObjectId
@@ -72,12 +74,18 @@ const SubmissionSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
+      enum: ['pending', 'approved', 'rejected', 'changes_requested'],
       default: 'pending',
     },
     adminNotes: {
       type: String,
       trim: true,
+    },
+    academicYear: {
+      type: String,
+      required: true,
+      index: true,
+      default: getCurrentAcademicYear,
     },
     submittedAt: {
       type: Date,
@@ -100,5 +108,7 @@ const SubmissionSchema: Schema = new Schema(
 SubmissionSchema.index({ userId: 1, status: 1 })
 SubmissionSchema.index({ category: 1, status: 1 })
 SubmissionSchema.index({ submittedAt: -1 })
+SubmissionSchema.index({ userId: 1, academicYear: 1 })
+SubmissionSchema.index({ academicYear: 1, status: 1 })
 
 export default mongoose.model<ISubmission>('Submission', SubmissionSchema)

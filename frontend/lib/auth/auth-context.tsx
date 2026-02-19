@@ -11,6 +11,7 @@ interface User {
   lastName: string
   facultyRank?: string
   department: string
+  mustChangePassword?: boolean
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (data: RegisterData) => Promise<void>
   logout: () => void
+  updateUser: (updates: Partial<User>) => void
   isAuthenticated: boolean
 }
 
@@ -87,6 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user')
   }
 
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return
+    const next = { ...user, ...updates }
+    setUser(next)
+    localStorage.setItem('user', JSON.stringify(next))
+  }
+
   const value: AuthContextType = {
     user,
     token,
@@ -94,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    updateUser,
     isAuthenticated: !!user && !!token,
   }
 

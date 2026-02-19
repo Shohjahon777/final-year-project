@@ -118,7 +118,7 @@ export interface AdminSubmission {
   metadata: Record<string, any>
   calculatedPoints: number
   adjustedPoints?: number
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'changes_requested'
   adminNotes?: string
   submittedAt: string
   reviewedAt?: string
@@ -133,6 +133,8 @@ export interface SubmissionFilters {
   status?: string
   category?: string
   userId?: string
+  submittedAfter?: string
+  submittedBefore?: string
   page?: number
   limit?: number
 }
@@ -233,7 +235,11 @@ export const adminApi = {
   // Submission Management
   getSubmissions: async (
     filters?: SubmissionFilters
-  ): Promise<{ submissions: AdminSubmission[]; pagination: any }> => {
+  ): Promise<{
+    submissions: AdminSubmission[]
+    counts?: { total: number; pending: number; approved: number; rejected: number; totalPoints?: number }
+    pagination: any
+  }> => {
     const response = await apiClient.get('/admin/submissions', { params: filters })
     return response.data.data
   },
@@ -253,6 +259,11 @@ export const adminApi = {
 
   rejectSubmission: async (id: string, notes: string): Promise<AdminSubmission> => {
     const response = await apiClient.put(`/admin/submissions/${id}/reject`, { notes })
+    return response.data.data.submission
+  },
+
+  requestChanges: async (id: string, notes: string): Promise<AdminSubmission> => {
+    const response = await apiClient.put(`/admin/submissions/${id}/request-changes`, { notes })
     return response.data.data.submission
   },
 

@@ -4,6 +4,8 @@ import * as configController from '../controllers/config.controller'
 
 const router = express.Router()
 
+router.use(authenticate)
+
 // Public routes (for frontend to get point values)
 router.get('/', configController.getAllConfigurations)
 router.get('/multipliers', configController.getMultipliers)
@@ -12,7 +14,7 @@ router.get('/category/:category', configController.getConfigurationsByCategory)
 router.get('/key/:key', configController.getConfigurationByKey)
 
 // Admin-only routes
-router.put('/:key', authenticate, requireAdmin, configController.updateConfiguration)
-router.post('/seed', authenticate, requireAdmin, configController.seedConfigurations)
+router.put('/:key', requireAdmin, configController.updateConfiguration)
+router.post('/seed', requireAdmin, configController.seedConfigurations)
 
 export default router

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { mockScores, mockDashboardData } from '@/lib/mock-data'
+import { facultyApi } from '@/lib/api/faculty'
+import { getCurrentAcademicYear } from '@/lib/api/config'
 import { cn } from '@/lib/utils'
 import { 
   TrendingUp, 
@@ -19,10 +20,55 @@ import {
   Info
 } from 'lucide-react'
 
+interface ScoreRecord {
+  _id?: string
+  academicYear: string
+  research: number
+  teaching: number
+  admin: number
+  outreach: number
+  totalPenalties: number
+  finalScore: number
+  outcome: string
+}
+
 function ScoresContent() {
+  const [scores, setScores] = useState<ScoreRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>('2024-2025')
   const [selectedYear, setSelectedYear] = useState('2024-2025')
-  const currentScore = mockScores.find(s => s.academicYear === selectedYear) || mockScores[0]
-  const previousScore = mockScores.find(s => s.academicYear === '2023-2024')
+
+  useEffect(() => {
+    Promise.all([getCurrentAcademicYear(), facultyApi.getScores()])
+      .then(([year, data]) => {
+        setCurrentAcademicYear(year)
+        setScores(Array.isArray(data) ? data : [])
+        setSelectedYear(year)
+      })
+      .catch(() => setError('Failed to load scores'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const yearOptions = Array.from(
+    new Set([
+      currentAcademicYear,
+      ...scores.map((s) => s.academicYear),
+    ])
+  ).sort((a, b) => b.localeCompare(a))
+
+  const currentScore = scores.find((s) => s.academicYear === selectedYear) ?? scores[0] ?? {
+    academicYear: selectedYear,
+    research: 0,
+    teaching: 0,
+    admin: 0,
+    outreach: 0,
+    totalPenalties: 0,
+    finalScore: 0,
+    outcome: 'contract_risk',
+  }
+  const previousYear = yearOptions[yearOptions.indexOf(selectedYear) + 1] ?? null
+  const previousScore = previousYear ? scores.find((s) => s.academicYear === previousYear) : undefined
 
   const getOutcomeColor = (outcome: string) => {
     switch (outcome) {
@@ -58,6 +104,30 @@ function ScoresContent() {
   const calculateChange = (current: number, previous: number | undefined) => {
     if (!previous) return null
     return current - previous
+  }
+
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    )
+  }
+
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    )
   }
 
   const renderChange = (change: number | null) => {
@@ -142,8 +212,9 @@ function ScoresContent() {
                 onChange={(e) => setSelectedYear(e.target.value)}
                 className="h-10 pl-3 pr-8 rounded-md border border-gray-300 bg-white text-sm text-gray-700 appearance-none cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
               >
-                <option value="2024-2025">2024-2025</option>
-                <option value="2023-2024">2023-2024</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
@@ -242,9 +313,14 @@ function ScoresContent() {
               Score History
             </div>
             <div className="space-y-4">
-              {mockScores.map((score) => (
+              {scores.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+                  No score records yet. Scores will appear here once your submissions are reviewed.
+                </p>
+              ) : (
+              scores.map((score) => (
                 <div 
-                  key={score._id}
+                  key={score._id ?? score.academicYear}
                   className={cn(
                     "p-4 rounded-lg border transition-colors cursor-pointer",
                     score.academicYear === selectedYear 
@@ -268,7 +344,8 @@ function ScoresContent() {
                     {score.finalScore.toFixed(2)}
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </div>

@@ -36,7 +36,7 @@ export interface Submission {
   metadata: Record<string, any>
   calculatedPoints: number
   adjustedPoints?: number
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'changes_requested'
   adminNotes?: string
   submittedAt: string
   reviewedAt?: string
@@ -44,7 +44,7 @@ export interface Submission {
 }
 
 export interface SubmissionFilters {
-  status?: 'pending' | 'approved' | 'rejected'
+  status?: 'pending' | 'approved' | 'rejected' | 'changes_requested'
   category?: 'research' | 'teaching' | 'admin' | 'outreach'
   page?: number
   limit?: number

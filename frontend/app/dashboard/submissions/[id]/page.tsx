@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { mockSubmissions } from '@/lib/mock-data'
+import { facultyApi } from '@/lib/api/faculty'
+import type { Submission } from '@/lib/api/faculty'
 import { cn } from '@/lib/utils'
 import { 
   ArrowLeft,
@@ -17,6 +19,7 @@ import {
   FileText,
   Info,
   Link as LinkIcon,
+  MessageSquare,
   User,
   XCircle
 } from 'lucide-react'
@@ -25,19 +28,41 @@ function SubmissionDetailContent() {
   const params = useParams()
   const router = useRouter()
   const submissionId = params.id as string
+  const [submission, setSubmission] = useState<Submission | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Find the submission
-  const submission = mockSubmissions.find(s => s._id === submissionId)
+  useEffect(() => {
+    facultyApi
+      .getSubmission(submissionId)
+      .then(setSubmission)
+      .catch(() => setError('Failed to load submission'))
+      .finally(() => setLoading(false))
+  }, [submissionId])
 
-  if (!submission) {
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error || !submission) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center py-20">
           <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             <FileText className="h-8 w-8 text-gray-400" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Submission Not Found</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">The submission you're looking for doesn't exist.</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
+            {error ?? 'Submission Not Found'}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            The submission you're looking for doesn't exist or you don't have access.
+          </p>
           <Button onClick={() => router.push('/dashboard/submissions')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Submissions
@@ -66,6 +91,15 @@ function SubmissionDetailContent() {
           bgColor: 'bg-warning-50 dark:bg-warning-900/10',
           borderColor: 'border-warning-200 dark:border-warning-900/30',
           textColor: 'text-warning-700 dark:text-warning-300'
+        }
+      case 'changes_requested':
+        return { 
+          variant: 'warning' as const, 
+          icon: MessageSquare, 
+          label: 'Changes requested',
+          bgColor: 'bg-amber-50 dark:bg-amber-900/10',
+          borderColor: 'border-amber-200 dark:border-amber-900/30',
+          textColor: 'text-amber-700 dark:text-amber-300'
         }
       case 'rejected':
         return { 
@@ -117,10 +151,10 @@ function SubmissionDetailContent() {
               ID: {submission._id}
             </p>
           </div>
-          {submission.status === 'pending' && (
+          {(submission.status === 'pending' || submission.status === 'changes_requested') && (
             <Button variant="outline" onClick={() => router.push(`/dashboard/submissions/${submission._id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
-              Edit Submission
+              {submission.status === 'changes_requested' ? 'Edit and resubmit' : 'Edit Submission'}
             </Button>
           )}
         </div>
@@ -140,6 +174,11 @@ function SubmissionDetailContent() {
               {submission.status === 'pending' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
                   Your submission is being reviewed by the administrator.
+                </p>
+              )}
+              {submission.status === 'changes_requested' && submission.adminNotes && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                  Admin requested changes: {submission.adminNotes}
                 </p>
               )}
               {submission.status === 'approved' && submission.reviewedAt && (

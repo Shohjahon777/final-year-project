@@ -12,9 +12,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { LayoutDashboard, FileText, TrendingUp, AlertCircle, LogOut } from 'lucide-react'
+import { LayoutDashboard, FileText, TrendingUp, AlertCircle, LogOut, User, CalendarDays } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface NavItem {
   label: string
@@ -28,6 +31,8 @@ const navItems: NavItem[] = [
   { label: 'Submissions', path: '/dashboard/submissions', icon: <FileText className="h-4 w-4" /> },
   { label: 'Scores', path: '/dashboard/scores', icon: <TrendingUp className="h-4 w-4" /> },
   { label: 'Penalties', path: '/dashboard/penalties', icon: <AlertCircle className="h-4 w-4" /> },
+  { label: 'Vacations', path: '/dashboard/vacations', icon: <CalendarDays className="h-4 w-4" /> },
+  { label: 'Profile', path: '/dashboard/profile', icon: <User className="h-4 w-4" /> },
 ]
 
 export function AppSidebar() {
@@ -35,6 +40,12 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { setOpen } = useSidebar()
   const { user, logout } = useAuth()
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleNavigation = (path: string) => {
     router.push(path)
@@ -53,8 +64,16 @@ export function AppSidebar() {
     <Sidebar side="left">
       <SidebarHeader>
         <div className="flex items-center gap-3 w-full px-2">
-          <div className="h-9 w-9 rounded-lg bg-primary-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">CAU</span>
+          <div className="h-9 w-9 flex items-center justify-center">
+            {mounted && (
+              <Image
+                src={theme === 'dark' ? '/CAU-white.png' : '/CAU-color.png'}
+                alt="CAU Logo"
+                width={36}
+                height={36}
+                className="object-contain"
+              />
+            )}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -99,31 +118,36 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-          {/* User Profile */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-medium text-sm">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
-                {user?.firstName} {user?.lastName}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
-                {user?.role}
-              </div>
-            </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-              className="h-8 w-8 text-gray-500 hover:text-gray-700"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+      <SidebarFooter className="border-t border-gray-200 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={() => handleNavigation('/dashboard/profile')}
+          className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-medium text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex-shrink-0"
+          aria-label="Go to profile"
+        >
+          {user?.firstName?.[0]}{user?.lastName?.[0]}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleNavigation('/dashboard/profile')}
+          className="flex-1 min-w-0 text-left py-1"
+        >
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
+            {user?.firstName} {user?.lastName}
           </div>
-        </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            {user?.role === 'faculty' ? 'Faculty' : (user?.role ?? '')}
+          </div>
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          className="h-8 w-8 flex-shrink-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          aria-label="Log out"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
       </SidebarFooter>
     </Sidebar>
   )

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { mockPenalties } from '@/lib/mock-data'
+import { facultyApi } from '@/lib/api/faculty'
+import { getCurrentAcademicYear } from '@/lib/api/config'
 import { cn } from '@/lib/utils'
 import { 
   AlertTriangle, 
@@ -27,12 +28,34 @@ const penaltyTypes = {
 }
 
 function PenaltiesContent() {
+  const [penalties, setPenalties] = useState<Array<{ _id: string; type: string; description: string; points: number; appliedAt: string; academicYear?: string }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>('2024-2025')
   const [selectedYear, setSelectedYear] = useState('2024-2025')
   const [filterType, setFilterType] = useState('')
 
-  // Filter penalties by year and type
-  const filteredPenalties = mockPenalties.filter(p => {
-    const yearMatch = p.academicYear === selectedYear
+  useEffect(() => {
+    Promise.all([getCurrentAcademicYear(), facultyApi.getPenalties()])
+      .then(([year, data]) => {
+        setCurrentAcademicYear(year)
+        setSelectedYear(year)
+        setPenalties(Array.isArray(data) ? data : [])
+      })
+      .catch(() => setError('Failed to load penalties'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const yearOptions = Array.from(
+    new Set([
+      currentAcademicYear,
+      ...penalties.map((p) => p.academicYear).filter(Boolean),
+    ])
+  ).sort((a, b) => (b ?? '').localeCompare(a ?? ''))
+
+  const filteredPenalties = penalties.filter((p) => {
+    const academicYear = p.academicYear
+    const yearMatch = !selectedYear || academicYear === selectedYear
     const typeMatch = !filterType || p.type === filterType
     return yearMatch && typeMatch
   })
@@ -42,6 +65,26 @@ function PenaltiesContent() {
 
   const getPenaltyConfig = (type: string) => {
     return penaltyTypes[type as keyof typeof penaltyTypes] || penaltyTypes.other
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -65,8 +108,17 @@ function PenaltiesContent() {
                 onChange={(e) => setSelectedYear(e.target.value)}
                 className="h-10 pl-3 pr-8 rounded-md border border-gray-300 bg-white text-sm text-gray-700 appearance-none cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
               >
-                <option value="2024-2025">2024-2025</option>
-                <option value="2023-2024">2023-2024</option>
+                {yearOptions.length > 0 ? (
+                  yearOptions.map((y) => (
+                    <option key={y} value={y ?? ''}>
+                      {y}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value={currentAcademicYear}>{currentAcademicYear}</option>
+                  </>
+                )}
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>

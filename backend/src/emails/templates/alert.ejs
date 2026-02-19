@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof subject !== 'undefined' && subject ? subject : 'Alert' %></title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="border-bottom: 2px solid #dc2626; padding-bottom: 16px; margin-bottom: 24px;">
+    <h1 style="margin: 0; font-size: 24px; color: #b91c1c;"><%= appName %> – Alert</h1>
+  </div>
+  <% if (typeof userName !== 'undefined' && userName) { %>
+  <p>Hello <%= userName %>,</p>
+  <% } %>
+  <p><%= typeof message !== 'undefined' && message ? message : 'This is an important alert. Please review and take any required action.' %></p>
+  <% if (typeof actionUrl !== 'undefined' && actionUrl) { %>
+  <p style="margin: 24px 0;">
+    <a href="<%= actionUrl %>" style="display: inline-block; background: #dc2626; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View details</a>
+  </p>
+  <% } %>
+  <footer style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+    &copy; <%= year %> <%= appName %>. All rights reserved.
+  </footer>
+</body>
+</html>

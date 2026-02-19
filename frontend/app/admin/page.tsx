@@ -142,9 +142,10 @@ export default function AdminDashboardPage() {
         const dashboardData = await adminApi.getDashboard()
         setData(dashboardData)
       } catch (err) {
-        // Use mock data if API fails
+        console.error('Failed to fetch admin dashboard:', err)
+        showError('Dashboard Error', 'Failed to load dashboard data. Please refresh.')
+        // Still set mock data as fallback for development
         setData(mockDashboardData)
-        console.warn('Using mock data for admin dashboard')
       } finally {
         setLoading(false)
       }
@@ -167,203 +168,247 @@ export default function AdminDashboardPage() {
   const dashboard = data || mockDashboardData
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* Compact Page Header */}
+      <div className="flex items-center justify-between pb-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Admin Dashboard</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Academic Year {dashboard.academicYear} • Overview of faculty performance and submissions
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Dashboard</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {dashboard.academicYear} • Faculty Performance Overview
           </p>
         </div>
-        <Button onClick={() => router.push('/admin/reports')}>
-          <Activity className="h-4 w-4 mr-2" />
-          Generate Report
+        <Button size="sm" variant="outline" onClick={() => router.push('/admin/reports')}>
+          <Activity className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Reports</span>
         </Button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Faculty</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 mt-1">
-                  {dashboard.stats.totalFaculty}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-              </div>
+      {/* Compact Stats Grid - Professional Minimal */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Faculty - Gray */}
+        <div className="group relative bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:shadow-md transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Faculty</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50 mt-1">
+                {dashboard.stats.totalFaculty}
+              </p>
             </div>
-            <Button
-              variant="link"
-              className="mt-4 p-0 h-auto text-sm"
-              onClick={() => router.push('/admin/users')}
-            >
-              View all users <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
+            <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Users className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/admin/users')}
+            className="mt-3 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+          >
+            View users <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Pending Reviews
-                </p>
-                <p className="text-3xl font-bold text-warning-600 mt-1">
-                  {dashboard.stats.pendingSubmissions}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-warning-100 dark:bg-warning-900/30 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-warning-600 dark:text-warning-400" />
-              </div>
+        {/* Pending Reviews - Highlighted with amber accent */}
+        <div className="group relative bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-900/50 p-4 hover:shadow-md transition-all duration-200 hover:border-amber-300 dark:hover:border-amber-800">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Pending</p>
+              <p className="text-2xl font-bold text-amber-900 dark:text-amber-300 mt-1">
+                {dashboard.stats.pendingSubmissions}
+              </p>
             </div>
-            <Button
-              variant="link"
-              className="mt-4 p-0 h-auto text-sm"
-              onClick={() => router.push('/admin/submissions?status=pending')}
-            >
-              Review submissions <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
+            <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/admin/submissions?status=pending')}
+            className="mt-3 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 flex items-center gap-1 transition-colors font-medium"
+          >
+            Review now <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Average Score</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 mt-1">
-                  {dashboard.stats.averageScore.toFixed(1)}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-success-100 dark:bg-success-900/30 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-success-600 dark:text-success-400" />
-              </div>
+        {/* Average Score - Gray */}
+        <div className="group relative bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 hover:shadow-md transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Score</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50 mt-1">
+                {dashboard.stats.averageScore.toFixed(1)}
+              </p>
             </div>
-            <p className="mt-4 text-sm text-gray-500">Out of 100 points maximum</p>
-          </CardContent>
-        </Card>
+            <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-gray-500">/ 100 points max</p>
+        </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">At Risk</p>
-                <p className="text-3xl font-bold text-danger-600 mt-1">
-                  {dashboard.stats.atRiskCount}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-danger-600 dark:text-danger-400" />
-              </div>
+        {/* At Risk - Red accent for critical metric */}
+        <div className="group relative bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/50 p-4 hover:shadow-md transition-all duration-200 hover:border-red-300 dark:hover:border-red-800">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-red-700 dark:text-red-400 uppercase tracking-wide">At Risk</p>
+              <p className="text-2xl font-bold text-red-900 dark:text-red-300 mt-1">
+                {dashboard.stats.atRiskCount}
+              </p>
             </div>
-            <p className="mt-4 text-sm text-danger-600">Require intervention</p>
-          </CardContent>
-        </Card>
+            <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-red-700 dark:text-red-400 font-medium">Need intervention</p>
+        </div>
       </div>
 
-      {/* Outcome Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Outcome Distribution</CardTitle>
-          <CardDescription>Faculty performance categories for {dashboard.academicYear}</CardDescription>
+      {/* Outcome Distribution - Clean Minimal */}
+      <Card className="border-gray-200 dark:border-gray-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold">Performance Distribution</CardTitle>
+              <CardDescription className="text-xs mt-0.5">Faculty categories • {dashboard.academicYear}</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800">
-              <p className="text-sm font-medium text-success-700 dark:text-success-400">
-                Outstanding
-              </p>
-              <p className="text-2xl font-bold text-success-600 mt-1">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {/* Outstanding */}
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  Outstanding
+                </p>
+                <div className="h-5 w-5 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
                 {dashboard.outcomeDistribution.outstanding || 0}
               </p>
-              <p className="text-xs text-success-600/70 mt-1">80+ points</p>
+              <p className="text-[10px] text-gray-500 mt-1">80+ points</p>
             </div>
-            <div className="p-4 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
-              <p className="text-sm font-medium text-primary-700 dark:text-primary-400">
-                Satisfactory
-              </p>
-              <p className="text-2xl font-bold text-primary-600 mt-1">
+
+            {/* Satisfactory */}
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  Satisfactory
+                </p>
+                <div className="h-5 w-5 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <CheckCircle className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
                 {dashboard.outcomeDistribution.satisfactory || 0}
               </p>
-              <p className="text-xs text-primary-600/70 mt-1">60-79 points</p>
+              <p className="text-[10px] text-gray-500 mt-1">60-79 points</p>
             </div>
-            <div className="p-4 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800">
-              <p className="text-sm font-medium text-warning-700 dark:text-warning-400">
-                Improvement Plan
-              </p>
-              <p className="text-2xl font-bold text-warning-600 mt-1">
+
+            {/* Improvement Plan */}
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  Improvement
+                </p>
+                <div className="h-5 w-5 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
                 {dashboard.outcomeDistribution.improvement_plan || 0}
               </p>
-              <p className="text-xs text-warning-600/70 mt-1">40-59 points</p>
+              <p className="text-[10px] text-gray-500 mt-1">40-59 points</p>
             </div>
-            <div className="p-4 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
-              <p className="text-sm font-medium text-danger-700 dark:text-danger-400">
-                Contract Risk
-              </p>
-              <p className="text-2xl font-bold text-danger-600 mt-1">
+
+            {/* Contract Risk */}
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  At Risk
+                </p>
+                <div className="h-5 w-5 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <AlertTriangle className="h-3 w-3 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">
                 {dashboard.outcomeDistribution.contract_risk || 0}
               </p>
-              <p className="text-xs text-danger-600/70 mt-1">&lt;40 points</p>
+              <p className="text-[10px] text-gray-500 mt-1">&lt;40 points</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pending Submissions Queue */}
+      {/* Two Column Layout - Compact & Clean */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Recent Submissions - Compact List */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Recent Submissions</CardTitle>
-                <CardDescription>Latest submissions requiring review</CardDescription>
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">Recent Submissions</CardTitle>
+                  <CardDescription className="text-xs mt-0.5">Latest activity requiring review</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => router.push('/admin/submissions')} className="h-7 text-xs">
+                  View All <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/admin/submissions')}>
-                View All
-              </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="pt-0">
+              <div className="space-y-2">
                 {dashboard.recentSubmissions.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No submissions found</p>
+                  <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+                    <FileText className="h-8 w-8 mb-2 opacity-40" />
+                    <p className="text-xs">No submissions found</p>
+                  </div>
                 ) : (
                   dashboard.recentSubmissions.map((submission) => (
                     <div
                       key={submission._id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                      className="group flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-700 transition-all cursor-pointer"
                       onClick={() => router.push(`/admin/submissions?id=${submission._id}`)}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={cn('px-2 py-1 rounded text-xs font-medium', categoryColors[submission.category])}>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Category Badge - Minimal */}
+                        <div className="flex-shrink-0 px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                           {submission.category}
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-50">
+
+                        {/* Title & User */}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm text-gray-900 dark:text-gray-50 truncate">
                             {submission.title}
                           </p>
-                          <p className="text-sm text-gray-500">
-                            {submission.userId.firstName} {submission.userId.lastName} •{' '}
-                            {formatTimeAgo(submission.submittedAt)}
+                          <p className="text-xs text-gray-500 truncate">
+                            {submission.userId.firstName} {submission.userId.lastName} • {formatTimeAgo(submission.submittedAt)}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                          +{submission.calculatedPoints} pts
+
+                      {/* Points & Status */}
+                      <div className="flex items-center gap-2.5 flex-shrink-0 ml-3">
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                          +{submission.calculatedPoints}
                         </span>
-                        <Badge variant={statusColors[submission.status] as any}>
-                          {submission.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                          {submission.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                          {submission.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
-                          {submission.status}
-                        </Badge>
+                        {submission.status === 'pending' && (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-[10px] font-medium uppercase">Pending</span>
+                          </div>
+                        )}
+                        {submission.status === 'approved' && (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            <CheckCircle className="h-3 w-3" />
+                            <span className="text-[10px] font-medium uppercase">Approved</span>
+                          </div>
+                        )}
+                        {submission.status === 'rejected' && (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                            <XCircle className="h-3 w-3" />
+                            <span className="text-[10px] font-medium uppercase">Rejected</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
@@ -373,42 +418,51 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Recent Penalties */}
+        {/* Recent Penalties - Compact List */}
         <div>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Recent Penalties</CardTitle>
-                <CardDescription>Recently applied penalties</CardDescription>
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">Recent Penalties</CardTitle>
+                  <CardDescription className="text-xs mt-0.5">Applied recently</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => router.push('/admin/penalties')} className="h-7 text-xs">
+                  All <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/admin/penalties')}>
-                View All
-              </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="pt-0">
+              <div className="space-y-2">
                 {dashboard.recentPenalties.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No recent penalties</p>
+                  <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+                    <AlertTriangle className="h-8 w-8 mb-2 opacity-40" />
+                    <p className="text-xs">No recent penalties</p>
+                  </div>
                 ) : (
                   dashboard.recentPenalties.map((penalty) => (
                     <div
                       key={penalty._id}
-                      className="p-3 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800"
+                      className="p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 transition-all"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-danger-700 dark:text-danger-400">
+                      {/* Header: Name + Points */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-semibold text-red-900 dark:text-red-300">
                           {penalty.userId.firstName} {penalty.userId.lastName}
                         </span>
-                        <span className="text-sm font-bold text-danger-600">
+                        <span className="text-xs font-bold text-red-700 dark:text-red-400 px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30">
                           {penalty.points} pts
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+
+                      {/* Description */}
+                      <p className="text-xs text-gray-700 dark:text-gray-400 line-clamp-2 mb-1.5">
                         {penalty.description}
                       </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {formatTimeAgo(penalty.appliedAt)} by {penalty.appliedBy.firstName}{' '}
-                        {penalty.appliedBy.lastName}
+
+                      {/* Footer: Time + Admin */}
+                      <p className="text-[10px] text-gray-500">
+                        {formatTimeAgo(penalty.appliedAt)} • by {penalty.appliedBy.firstName} {penalty.appliedBy.lastName}
                       </p>
                     </div>
                   ))

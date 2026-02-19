@@ -6,7 +6,7 @@ import { AdminSidebar } from './AdminSidebar'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { Button } from '@/components/ui/button'
-import { Search, User, ChevronRight } from 'lucide-react'
+import { User, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -24,6 +24,7 @@ const breadcrumbLabels: Record<string, string> = {
   '/admin/penalties': 'Penalties',
   '/admin/scoring': 'Scoring Rules',
   '/admin/reports': 'Reports',
+  '/admin/account': 'My account',
 }
 
 function Breadcrumbs() {
@@ -63,7 +64,7 @@ function Breadcrumbs() {
 
 export function AdminLayout({ children, pendingCount = 0 }: AdminLayoutProps) {
   const router = useRouter()
-  const { user, isLoading, isAuthenticated } = useAuth()
+  const { user, loading: isLoading, isAuthenticated } = useAuth()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -105,20 +106,19 @@ export function AdminLayout({ children, pendingCount = 0 }: AdminLayoutProps) {
               <Breadcrumbs />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="text-gray-500">
-                <Search className="h-5 w-5" />
-              </Button>
               <NotificationBell />
               <ThemeToggle />
               <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
-              <Button variant="ghost" size="sm" className="gap-2">
-                <div className="h-8 w-8 rounded-full bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center">
-                  <User className="h-4 w-4 text-danger-600 dark:text-danger-400" />
-                </div>
-                <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Admin
-                </span>
-              </Button>
+              <Link href="/admin/account">
+                <Button variant="ghost" size="sm" className="gap-2" type="button">
+                  <div className="h-8 w-8 rounded-full bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center">
+                    <User className="h-4 w-4 text-danger-600 dark:text-danger-400" />
+                  </div>
+                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Admin
+                  </span>
+                </Button>
+              </Link>
             </div>
           </header>
 

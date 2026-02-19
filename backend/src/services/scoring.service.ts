@@ -57,6 +57,7 @@ export class ScoringService {
    */
   async calculateResearchPoints(submission: Partial<ISubmission>, user: IUser): Promise<number> {
     const { subcategory, metadata = {} } = submission
+    if (!subcategory) throw new AppError('Subcategory is required', 400)
     let points = 0
 
     // Get base points from configuration
@@ -134,6 +135,7 @@ export class ScoringService {
    */
   async calculateTeachingPoints(submission: Partial<ISubmission>, user: IUser): Promise<number> {
     const { subcategory, metadata = {} } = submission
+    if (!subcategory) throw new AppError('Subcategory is required', 400)
     let points = 0
 
     // Get base points from configuration
@@ -178,6 +180,7 @@ export class ScoringService {
    */
   async calculateAdminPoints(submission: Partial<ISubmission>, user: IUser): Promise<number> {
     const { subcategory, metadata = {} } = submission
+    if (!subcategory) throw new AppError('Subcategory is required', 400)
     let points = 0
 
     // Get base points from configuration
@@ -225,6 +228,7 @@ export class ScoringService {
    */
   async calculateOutreachPoints(submission: Partial<ISubmission>, user: IUser): Promise<number> {
     const { subcategory, metadata = {} } = submission
+    if (!subcategory) throw new AppError('Subcategory is required', 400)
     let points = 0
 
     // Get base points from configuration
@@ -243,7 +247,7 @@ export class ScoringService {
         'school_visit': 1,
         'stem_fair': 2,
       }
-      points = defaults[subcategory ?? ''] || 0
+      points = defaults[subcategory] || 0
     } else {
       points = config.value as number
     }

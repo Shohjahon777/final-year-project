@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(ss:*)",
+      "Bash(cat:*)",
+      "Bash(# Check error middleware to see what causes 500 vs controlled errors cat /d/final-year-project/backend/src/middleware/error.middleware.ts || cat /d/final-year-project/backend/dist/middleware/error.middleware.js)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(kill:*)",
+      "Bash(# PID 20432 is the first node process we launched from \"\"cd /d/final-year-project/backend && node dist/app.js &\"\" # When we ran the second node dist/app.js it got PID 29732 but couldn''t bind to port since 20432 holds it # 20432 was started before the rebuild - we need to kill it properly # Check the Windows process for PID 20432 wmic process where ProcessId=20432 get CommandLine)",
+      "Bash(echo:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx next lint:*)",
+      "Bash(node_modules/.bin/next lint:*)",
+      "Bash(node_modules/.bin/next --version)",
+      "Bash(node_modules/.bin/eslint:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(node_modules/.bin/next build .)"
+    ]
+  }
+}

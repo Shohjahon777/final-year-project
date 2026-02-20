@@ -111,7 +111,7 @@ function Drawer({ open, onOpenChange, children, defaultFullscreen = false }: Dra
         role="dialog"
         aria-modal="true"
         className={cn(
-          'fixed top-0 right-0 z-[100] flex flex-col bg-white dark:bg-gray-900 shadow-2xl h-screen bg-mesh-lines',
+          'fixed top-0 right-0 z-[100] flex flex-col bg-white dark:bg-gray-900 shadow-2xl h-screen',
           'transition-transform duration-300 ease-out',
           'w-[90vw] md:w-[60vw] lg:w-[50vw]',
           fullscreen ? 'w-full md:w-full lg:w-full max-w-none' : 'max-w-4xl',
@@ -211,7 +211,7 @@ interface DrawerContentProps {
 
 function DrawerContent({ children, className }: DrawerContentProps) {
   return (
-    <div className={cn('flex-1 overflow-y-auto px-6 py-4', className)}>
+    <div className={cn('flex-1 overflow-y-auto px-6 py-4 bg-gray-50 dark:bg-gray-950', className)}>
       {children}
     </div>
   )
@@ -238,7 +238,7 @@ function DrawerFooter({ children, className }: DrawerFooterProps) {
 // ----- Drawer Section -----
 interface DrawerSectionProps {
   icon?: React.ReactNode
-  label: string
+  label: React.ReactNode
   children: React.ReactNode
   className?: string
 }

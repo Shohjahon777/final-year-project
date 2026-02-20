@@ -214,7 +214,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="flex items-center gap-2 text-sm text-white/50">
             <div className="w-1 h-1 bg-white/50 rounded-full"></div>
-            © 2024 Central Asian University
+            © 2026 Central Asian University
           </div>
         </div>
       </div>
@@ -238,6 +238,20 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Engineering Logo above card */}
+          <div className="flex justify-center mb-6">
+            {mounted && (
+              <Image
+                src={theme === 'dark' ? '/engineering-white.png' : '/engineering.png'}
+                alt="Engineering Logo"
+                width={200}
+                height={100}
+                className="object-contain"
+                priority
+              />
+            )}
+          </div>
+
           {/* Glassmorphic Card */}
           <Card className="border shadow-xl backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 relative overflow-hidden">
             {/* Decorative gradient line */}
@@ -248,7 +262,7 @@ export default function LoginPage() {
                 Welcome back
               </CardTitle>
               <CardDescription className="flex items-center gap-2">
-                <div className="w-1 h-1 bg-primary-500 rounded-full"></div>
+                <span className="w-1 h-1 bg-primary-500 rounded-full inline-block"></span>
                 Sign in to continue to your dashboard
               </CardDescription>
             </CardHeader>
@@ -390,8 +404,8 @@ export default function LoginPage() {
           {/* Mobile Footer */}
           <div className="lg:hidden mt-6 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              © 2024 Central Asian University
+              <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+              © 2026 Central Asian University
             </p>
           </div>
         </div>

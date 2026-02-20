@@ -8,11 +8,38 @@
 
 ## 📊 Progress Overview
 
-- **Total Tasks**: 0
-- **Completed**: 0
-- **In Progress**: 0
-- **Pending**: 0
+- **Total Tasks**: (see phases below)
+- **Completed (recent)**: Entry redirect, temp password & forced change, new submission (Research/Outreach only), layout fix, file upload, backend tests (auth + upload), admin "other submissions by user", Email & forgot password (EJS + Nodemailer)
+- **In Progress**: None
+- **Pending**: UI polish (header search, Register link, Scores export).
 - **Blocked**: 0
+
+---
+
+## ✅ Current Implementation Status (as of 2025-01-29)
+
+**Done:**
+
+- **Entry & auth**
+  - `/` redirects unauthenticated users to `/login`.
+  - User model has `mustChangePassword`; login returns it; `PATCH /api/auth/password` for forced/voluntary change.
+  - Frontend: login redirects to `/change-password` when `mustChangePassword`; change-password page; `ProtectedRoute` enforces change when flag is set.
+- **New submission page** (`/dashboard/submissions/new`)
+  - Only **Research** and **Outreach** (Teaching/Administrative are department-evaluated; callout + redirect for invalid category).
+  - Points preview and action buttons layout fixed (stacked sidebar).
+  - **File evidence**: file input, upload to `POST /api/upload`, `evidenceValue` = returned URL; validation blocks submit without file when type is “file”.
+- **Backend**
+  - `POST /api/upload` (auth, multer, 10MB limit), serves `uploads/` at `/uploads`.
+  - **Jest tests (61 total)**: app.health; auth.routes; auth.service (login, changePassword, forgotPassword, resetPassword); email.service; faculty.routes; config.routes; admin.routes (submissions + POST scores/recalculate/:userId); admin.service (recalculateScore: category totals, ceilings, penalties, outcome, finalScore ≥ 0); upload.routes.
+
+**Remaining (in order of suggested focus):**
+
+1. ~~**Admin: other submissions by same user**~~ – Done: drawer section “Other submissions by [Name]”, fetch by userId, “View all” → `/admin/submissions?userId=xxx`, URL filter with clear.
+2. ~~**User profile page & API**~~ – Done: `PATCH /api/auth/profile` (TDD + backend), `/dashboard/profile` page (edit firstName, lastName, department, facultyRank), Profile in sidebar, header User button → profile, Change password link.
+3. ~~**Wire to real API**~~ – Done: Dashboard, Submissions list/detail/new, Scores, Penalties use facultyApi; drawer save and Edit page use updateSubmission; new submission uses createSubmission.
+4. ~~**Email & forgot password**~~ – Done: EJS + Nodemailer; templates (welcome, reset, warning, alert, oauth); User passwordResetToken/passwordResetExpires; POST /auth/forgot-password, POST /auth/reset-password; welcome email on register; frontend Forgot password link, /forgot-password, /reset-password pages; Jest tests for forgot/reset.
+5. ~~**UI polish**~~ – Done: Header search removed from Dashboard and Admin layouts; Register link on login (“Admin? Register new user” → /register).
+6. **Academic year (dynamic)** – Admin can set current academic year via config key `app.current_academic_year` (value: YYYY-YYYY) in admin config; backend uses it when present, otherwise date-based (Sept–Aug). No separate “list of academic years” UI; add key in Config if needed.
 
 ---
 
@@ -808,6 +835,26 @@
 
 ---
 
-**Last Updated**: 2025-01-XX  
+## 📋 Prompt for Next Chat (copy below)
+
+Use this in a new chat to continue without context rot:
+
+```
+This is a Faculty Evaluation System (Next.js frontend, Express backend, MongoDB). Read @TASKS.md for current status.
+
+**Done so far:** Entry redirect to /login; temporary password & forced change (backend + frontend); new submission page only Research/Outreach; layout fix; file upload (POST /api/upload + frontend file evidence); backend Jest tests for auth and upload.
+
+**Next priorities (from TASKS.md):**
+1. Admin: when viewing a professor's submission, add a way to see other submissions by that same user (drawer or page, good UX).
+2. User profile page & API (profile update, link from sidebar/header).
+3. Wire Dashboard, Submissions list/detail, Scores, Penalties to real API; implement Edit Submission.
+4. Email service & Forgot password5. UI polish (header search or remove; register link if needed).
+
+Work on the next unfinished item. Prefer tests first (TDD) where applicable, then implement and run tests until green.
+```
+
+---
+
+**Last Updated**: 2025-01-29  
 **Next Review**: Weekly
 

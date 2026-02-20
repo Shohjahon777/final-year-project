@@ -604,7 +604,7 @@ export default function AdminSubmissionsPage() {
         status: sub.status,
         submitted: formatExportDate(sub.submittedAt),
         reviewed: sub.reviewedAt ? formatExportDate(sub.reviewedAt) : '',
-        reviewNotes: sub.reviewNotes || '',
+        reviewNotes: sub.adminNotes || '',
       }))
 
       const columns = [
@@ -645,7 +645,7 @@ export default function AdminSubmissionsPage() {
         status: sub.status,
         submitted: formatExportDate(sub.submittedAt),
         reviewed: sub.reviewedAt ? formatExportDate(sub.reviewedAt) : '',
-        reviewNotes: sub.reviewNotes || '',
+        reviewNotes: sub.adminNotes || '',
       }))
 
       const columns = [
@@ -680,7 +680,7 @@ export default function AdminSubmissionsPage() {
     }
   }
 
-  const toggleSelect = (id: string, e?: React.MouseEvent) => {
+  const toggleSelect = (id: string, e?: React.MouseEvent | React.ChangeEvent<HTMLInputElement>) => {
     e?.stopPropagation()
     const newSet = new Set(selectedIds)
     if (newSet.has(id)) {
@@ -700,7 +700,7 @@ export default function AdminSubmissionsPage() {
     setBulkActionLoading(true)
     try {
       const promises = Array.from(selectedIds).map(id =>
-        adminApi.approveSubmission(id, 'Bulk approved')
+        adminApi.approveSubmission(id, { notes: 'Bulk approved' })
       )
       await Promise.all(promises)
       success('Bulk approve successful', `${count} submission${count > 1 ? 's' : ''} approved`)
@@ -741,7 +741,7 @@ export default function AdminSubmissionsPage() {
       // Map status to appropriate API call
       switch (newStatus) {
         case 'approved':
-          await adminApi.approveSubmission(submissionId, 'Approved via Kanban')
+          await adminApi.approveSubmission(submissionId, { notes: 'Approved via Kanban' })
           success('Submission approved', 'The submission has been approved')
           break
         case 'rejected':
@@ -1396,7 +1396,7 @@ export default function AdminSubmissionsPage() {
 
               {/* Description */}
               <DrawerSection icon={<MessageSquare className="h-4 w-4" />} label="Description">
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
                   {selectedSubmission.description}
                 </div>
               </DrawerSection>
@@ -1440,7 +1440,7 @@ export default function AdminSubmissionsPage() {
                 <DrawerSection icon={<FileText className="h-4 w-4" />} label="Additional Details">
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(selectedSubmission.metadata).map(([key, value]) => (
-                      <div key={key} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div key={key} className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                         <p className="text-xs text-gray-500 capitalize mb-1">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</p>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-50">{String(value)}</p>
                       </div>
@@ -1489,7 +1489,7 @@ export default function AdminSubmissionsPage() {
                 </DrawerSection>
               ) : selectedSubmission.adminNotes ? (
                 <DrawerSection icon={<MessageSquare className="h-4 w-4" />} label="Admin Notes">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
                     {selectedSubmission.adminNotes}
                   </div>
                 </DrawerSection>

@@ -87,23 +87,23 @@ export function AdminSidebar({ pendingCount = 0 }: AdminSidebarProps) {
       {/* Floating Glass Header */}
       <SidebarHeader className="p-4 border-b border-gray-200/80 dark:border-slate-800/50">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 flex items-center justify-center">
+          <div className="h-10 w-10 flex items-center justify-center">
             {mounted && (
               <Image
-                src={theme === 'dark' ? '/CAU-white.png' : '/CAU-color.png'}
-                alt="CAU Logo"
-                width={32}
-                height={32}
+                src={theme === 'dark' ? '/engineering-white.png' : '/engineering.png'}
+                alt="Engineering Logo"
+                width={40}
+                height={40}
                 className="object-contain"
               />
             )}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold tracking-tight text-gray-900 dark:text-white">
-              Command Center
+              Admin Panel
             </span>
             <span className="text-[10px] tracking-wide text-gray-500 dark:text-slate-400 uppercase font-medium">
-              Faculty Eval
+              Management View
             </span>
           </div>
         </div>

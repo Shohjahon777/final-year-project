@@ -261,10 +261,9 @@
       0deg,
       transparent,
       transparent 23px,
-      rgba(0, 0, 0, 0.03) 23px,
-      rgba(0, 0, 0, 0.03) 24px
+      rgba(0, 0, 0, 0.04) 23px,
+      rgba(0, 0, 0, 0.04) 24px
     );
-    background-blend-mode: overlay;
   }
   .dark .bg-mesh-lines {
     background-image: repeating-linear-gradient(
@@ -281,17 +280,16 @@
         0deg,
         transparent,
         transparent 23px,
-        rgba(0, 0, 0, 0.025) 23px,
-        rgba(0, 0, 0, 0.025) 24px
+        rgba(0, 0, 0, 0.04) 23px,
+        rgba(0, 0, 0, 0.04) 24px
       ),
       repeating-linear-gradient(
         90deg,
         transparent,
         transparent 23px,
-        rgba(0, 0, 0, 0.025) 23px,
-        rgba(0, 0, 0, 0.025) 24px
+        rgba(0, 0, 0, 0.04) 23px,
+        rgba(0, 0, 0, 0.04) 24px
       );
-    background-blend-mode: overlay;
   }
   .dark .bg-mesh-grid {
     background-image:

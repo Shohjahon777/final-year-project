@@ -40,6 +40,11 @@ const statusConfig = {
     icon: XCircle,
     className: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50',
   },
+  cancelled: {
+    label: 'Cancelled',
+    icon: XCircle,
+    className: 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700',
+  },
 }
 
 function formatDate(dateStr: string) {

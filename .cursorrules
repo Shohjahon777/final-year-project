@@ -8,6 +8,8 @@
 6. **Incremental commits** - Commit after each prompt completion
 7. **Latest technologies** - Use Next js 16 for project
 8. **UI Styling** - Use ui.md file for ui styling as an instructor to you.
+9. **TDD approach** - Write tests first, then the code, then run the tests and update the code until tests pass.
+10. **Typescript compile errors in build** - Run nr build to see the errors, then fix them, and then run build until build passes.
 
 
 You have permission to:

@@ -538,7 +538,7 @@ export default function PenaltiesCommandCenter() {
 
       {/* Drawer (keep existing drawer code but update styling) */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        {/* Same drawer content as before */}
+        <></>
       </Drawer>
     </div>
   )
